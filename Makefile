@@ -13,10 +13,10 @@ MDIR = man
 DDIR = doc
 BDIR = .
 
-_LIB = libredes2-G-2301-01-P1.a
+_LIB = libredes2-G-2301-01-P2.a
 LIB = $(patsubst %,$(LDIR)/%,$(_LIB))
 
-_LOBJ = G-2301-01-P1-daemon.o G-2301-01-P1-tcp.o G-2301-01-P1-udp.o G-2301-01-P1-server.o G-2301-01-P1-irc.o G-2301-01-P1-tools.o
+_LOBJ = G-2301-01-P1-daemon.o G-2301-01-P1-tcp.o G-2301-01-P1-udp.o G-2301-01-P1-server.o G-2301-01-P1-irc.o G-2301-01-P1-tools.o G-2301-01-P2-ucomm.o
 LOBJ = $(patsubst %,$(ODIR)/%,$(_LOBJ))
 
 _DEPS = 
@@ -51,11 +51,8 @@ compress: clean doc
 doc: 
 	doxygen
 
-kill:
-	pkill G-2301-01-P1-ir
-
-run: G-2301-01-P1-irc_server
-	./G-2301-01-P1-irc_server 6667
+run: xchat2
+	./xchat2	
 
 log: 
 	tail -F /var/log/syslog | grep irc

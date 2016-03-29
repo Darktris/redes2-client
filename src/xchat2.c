@@ -1,5 +1,6 @@
 #include <redes2/ircxchat.h>
 
+int socketd_client;
 /** 
  * \defgroup IRCInterfaceCallbacks Callbaks del interfaz
  *
@@ -597,6 +598,7 @@ void IRCInterface_NewTopicEnter(char *topicdata)
  
 void IRCInterface_NewCommandText(char *command)
 {
+    IRCUser_CommandQuery (command);
 }
 
 /**
@@ -1005,6 +1007,28 @@ boolean IRCInterface_DisconnectServer(char *server, int port)
  
 long IRCInterface_Connect(char *nick, char *user, char *realname, char *password, char *server, int port, boolean ssl)
 {
+    char* comm;
+    if(!nick || !user || !realname || !server || port < 0) return IRCERR_NOCONNECT;
+    if(ssl==TRUE) return IRCERR_NOSSL;
+
+    if(client_tcpsocket_open(port, &socketd_client, server) < 0) {
+        return IRCERR_NOCONNECT;
+    }
+
+    if(password) {
+        IRCMsg_Pass (&comm, NULL, password);
+        tcpsocket_snd(socketd_client, comm, &comm);
+        free(comm);
+    }
+    
+    IRCMsg_Nick (&comm, NULL, nick, NULL);
+    tcpsocket_snd(socketd_client, comm, &comm);
+    free(comm);
+    
+    IRCMsg_User (&comm, NULL, user, "1", realname);
+    tcpsocket_snd(socketd_client, comm, &comm);
+    free(comm);
+
 	return IRC_OK;
 }
 
