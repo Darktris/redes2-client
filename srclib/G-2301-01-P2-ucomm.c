@@ -13,10 +13,19 @@
 #define UCOMM_NEXTERN
 #include <G-2301-01-P2-ucomm.h>
 
-
-typedef void(*ucomm_t)(char*);
-
 ucomm_t ucommands[UCOMM_LEN];
+
+void init_ucomm() {
+    int i;
+    //UNAMES, UHELP, ULIST, UJOIN, UPART, ULEAVE, UQUIT, UNICK, UAWAY, UWHOIS, UINVITE, UKICK, UTOPIC, UME, UMSG, UQUERY, UNOTICE, UNOTIFY, UIGNORE, UPING, UWHO, UWHOWAS, UISON, UCYCLE, UMOTD, URULES, ULUSERS, UVERSION, UADMIN, UUSERHOST, UKNOCK, UVHOST, UMODE, UTIME, UBOTMOTD, UIDENTIFY, UDNS, UUSERIP, USTATS, UCTCP, UDCC, UMAP, ULINKS, USETNAME, ULICENSE, UMODULE, UPARTALL, UCHAT
+    for(i=0;i<UCOMM_LEN; i++) {
+        ucommands[i]=udefault;
+    }
+    ucommands[UJOIN] = ujoin;
+    ucommands[ULIST] = ulist;
+
+}
+
 /**
   @brief Atiende el comando JOIN
   @param command: El comando recibido
@@ -24,8 +33,9 @@ ucomm_t ucommands[UCOMM_LEN];
 */
 void ujoin(char* command) {
     char *channel, *pass, *comm;
-
+    
     IRCUserParse_Join(command, &channel, &pass);
+    syslog(LOG_INFO, "ujoin: parsing");
 
     IRCMsg_Join (&comm, NULL, channel, pass, NULL);
     client_socketsnd(comm);
@@ -54,15 +64,6 @@ void ulist(char* command) {
 }
 
 void udefault(char* command) {
-    
+    syslog(LOG_INFO, "udef: ERROR no command");    
 }
-void init_ucomm() {
-    int i;
-    //UNAMES, UHELP, ULIST, UJOIN, UPART, ULEAVE, UQUIT, UNICK, UAWAY, UWHOIS, UINVITE, UKICK, UTOPIC, UME, UMSG, UQUERY, UNOTICE, UNOTIFY, UIGNORE, UPING, UWHO, UWHOWAS, UISON, UCYCLE, UMOTD, URULES, ULUSERS, UVERSION, UADMIN, UUSERHOST, UKNOCK, UVHOST, UMODE, UTIME, UBOTMOTD, UIDENTIFY, UDNS, UUSERIP, USTATS, UCTCP, UDCC, UMAP, ULINKS, USETNAME, ULICENSE, UMODULE, UPARTALL, UCHAT
-    for(i=0;i<UCOMM_LEN; i++) {
-        ucommands[i]=udefault;
-    }
-    ucommands[UJOIN] = ujoin;
-    ucommands[ULIST] = ulist;
 
-}

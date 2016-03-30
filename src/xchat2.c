@@ -1,5 +1,7 @@
 #include <redes2/ircxchat.h>
 #include <G-2301-01-P2-client.h>
+#include <G-2301-01-P2-ucomm.h>
+#include <syslog.h>
 #define DOWN pthread_mutex_lock
 #define UP pthread_mutex_unlock
 
@@ -9,11 +11,11 @@ pthread_mutex_t mutexrcv;
 
 pthread_t t;
 
-
 int _client_socketsnd(char * msg) {
     DOWN(&mutexsnd);
     tcpsocket_snd(socketd_client, msg, strlen(msg));
     UP(&mutexsnd);
+    syslog(LOG_INFO, "Sending: %s", msg);
 }
 
 int _client_socketrcv(char* msg, size_t size) {
@@ -21,6 +23,7 @@ int _client_socketrcv(char* msg, size_t size) {
     DOWN(&mutexrcv);
     tcpsocket_rcv(socketd_client, msg, size, &len);
     UP(&mutexrcv);
+    //syslog(LOG_INFO, "Receiving: %s", msg);
 }
 
 int client_socketsnd(char *msg) {
@@ -638,7 +641,19 @@ void IRCInterface_NewTopicEnter(char *topicdata)
  
 void IRCInterface_NewCommandText(char *command)
 {
-    IRCUser_CommandQuery (command);
+    long ret;
+    ret = IRCUser_CommandQuery (command);
+    syslog(LOG_INFO, "Command text: %s", command);
+    if(ret == IRCERR_NOUSERCOMMAND) {
+        //SENDMSGWINDOW
+        syslog(LOG_INFO, "Command text: MSG", command);
+    } else if(ret < 0) {
+        //ERROR
+        syslog(LOG_INFO, "Command text: ERROR", command);
+    } else {
+        ucommands[ret](command);
+        syslog(LOG_INFO, "Command text: COMM", command);
+    }
 }
 
 /**
@@ -1059,7 +1074,7 @@ long IRCInterface_Connect(char *nick, char *user, char *realname, char *password
 
     pthread_create(&t, NULL, rcv_thread, NULL);
 
-    if(password) {
+    if(password && strlen(password) > 1) {
         IRCMsg_Pass (&comm, NULL, password);
         client_socketsnd(comm); 
         free(comm);
@@ -1084,7 +1099,7 @@ void* rcv_thread(void *d) {
         client_socketrcv(msg, 8192);
         next = IRC_UnPipelineCommands (msg, &command, NULL);
         do { 
-            //PROCESS COMMAND
+            syslog(LOG_INFO,"%s", command);
             if(command!=NULL) free(command); //??
             next = IRC_UnPipelineCommands(NULL, &command, next);
         } while(next!=NULL);
@@ -1119,6 +1134,8 @@ int main (int argc, char *argv[])
     pthread_mutex_init(&mutexrcv, NULL);
     DOWN(&mutexrcv);
     DOWN(&mutexsnd);
+
+    init_ucomm();
 
 	/* La función IRCInterface_Run debe ser llamada al final      */
 	/* del main y es la que activa el interfaz gráfico quedándose */
