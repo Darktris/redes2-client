@@ -1,6 +1,46 @@
 #include <redes2/ircxchat.h>
+#include <G-2301-01-P2-client.h>
+#define DOWN pthread_mutex_lock
+#define UP pthread_mutex_unlock
 
 int socketd_client;
+pthread_mutex_t mutexsnd;
+pthread_mutex_t mutexrcv;
+
+pthread_t t;
+
+
+int _client_socketsnd(char * msg) {
+    DOWN(&mutexsnd);
+    tcpsocket_snd(socketd_client, msg, strlen(msg));
+    UP(&mutexsnd);
+}
+
+int _client_socketrcv(char* msg, size_t size) {
+    size_t len=0;
+    DOWN(&mutexrcv);
+    tcpsocket_rcv(socketd_client, msg, size, &len);
+    UP(&mutexrcv);
+}
+
+int client_socketsnd(char *msg) {
+    IRCInterface_PlaneRegisterOutMessage(msg);
+    _client_socketsnd(msg);
+}
+
+int client_socketsnd_thread(char *msg) {
+    IRCInterface_PlaneRegisterOutMessageThread(msg);
+    _client_socketsnd(msg);
+}
+
+int client_socketrcv(char* msg, size_t size) {
+    _client_socketrcv(msg, size); 
+    IRCInterface_PlaneRegisterInMessage (msg);
+}
+int client_socketrcv_thread(char* msg, size_t size) {
+    _client_socketrcv(msg, size); 
+    IRCInterface_PlaneRegisterInMessageThread(msg);
+}
 /** 
  * \defgroup IRCInterfaceCallbacks Callbaks del interfaz
  *
@@ -1015,24 +1055,41 @@ long IRCInterface_Connect(char *nick, char *user, char *realname, char *password
         return IRCERR_NOCONNECT;
     }
 
+    UP(&mutexsnd);
+
+    pthread_create(&t, NULL, rcv_thread, NULL);
+
     if(password) {
         IRCMsg_Pass (&comm, NULL, password);
-        tcpsocket_snd(socketd_client, comm, &comm);
+        client_socketsnd(comm); 
         free(comm);
     }
     
     IRCMsg_Nick (&comm, NULL, nick, NULL);
-    tcpsocket_snd(socketd_client, comm, &comm);
+    client_socketsnd(comm); 
     free(comm);
     
     IRCMsg_User (&comm, NULL, user, "1", realname);
-    tcpsocket_snd(socketd_client, comm, &comm);
+    client_socketsnd(comm); 
     free(comm);
 
+    UP(&mutexrcv);
 	return IRC_OK;
 }
 
-
+void* rcv_thread(void *d) {
+    char *msg, *comm, *next, *command;
+    msg = malloc(8192);
+    while(1) {
+        client_socketrcv(msg, 8192);
+        next = IRC_UnPipelineCommands (msg, &command, NULL);
+        do { 
+            //PROCESS COMMAND
+            if(command!=NULL) free(command); //??
+            next = IRC_UnPipelineCommands(NULL, &command, next);
+        } while(next!=NULL);
+    }
+}
 /***************************************************************************************************/
 /***************************************************************************************************/
 /**                                                                                               **/
@@ -1058,6 +1115,11 @@ long IRCInterface_Connect(char *nick, char *user, char *realname, char *password
 
 int main (int argc, char *argv[])
 {
+    pthread_mutex_init(&mutexsnd, NULL);
+    pthread_mutex_init(&mutexrcv, NULL);
+    DOWN(&mutexrcv);
+    DOWN(&mutexsnd);
+
 	/* La función IRCInterface_Run debe ser llamada al final      */
 	/* del main y es la que activa el interfaz gráfico quedándose */
 	/* en esta función hasta que se pulsa alguna salida del       */
