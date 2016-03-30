@@ -10,6 +10,13 @@
 #include <syslog.h>
 #include <G-2301-01-P1-tools.h>
 #include <G-2301-01-P2-client.h>
+#define UCOMM_NEXTERN
+#include <G-2301-01-P2-ucomm.h>
+
+
+typedef void(*ucomm_t)(char*);
+
+ucomm_t ucommands[UCOMM_LEN];
 /**
   @brief Atiende el comando JOIN
   @param command: El comando recibido
@@ -21,7 +28,7 @@ void ujoin(char* command) {
     IRCUserParse_Join(command, &channel, &pass);
 
     IRCMsg_Join (&comm, NULL, channel, pass, NULL);
-    tcpsocket_snd(SOCKETD_CLIENT, comm, strlen(comm));
+    client_socketsnd(comm);
     if(comm) free(comm);
 
     if(pass) free(pass);
@@ -39,10 +46,23 @@ void ulist(char* command) {
     IRCUserParse_List (command, &channel, &st);
 
     IRCMsg_List(&comm, NULL, channel, NULL);
-    tcpsocket_snd(SOCKETD_CLIENT, comm, strlen(comm));
+    client_socketsnd(comm);
     if(comm) free(comm);
 
     if(channel) free(channel);
     if(st) free(st);
 }
 
+void udefault(char* command) {
+    
+}
+void init_ucomm() {
+    int i;
+    //UNAMES, UHELP, ULIST, UJOIN, UPART, ULEAVE, UQUIT, UNICK, UAWAY, UWHOIS, UINVITE, UKICK, UTOPIC, UME, UMSG, UQUERY, UNOTICE, UNOTIFY, UIGNORE, UPING, UWHO, UWHOWAS, UISON, UCYCLE, UMOTD, URULES, ULUSERS, UVERSION, UADMIN, UUSERHOST, UKNOCK, UVHOST, UMODE, UTIME, UBOTMOTD, UIDENTIFY, UDNS, UUSERIP, USTATS, UCTCP, UDCC, UMAP, ULINKS, USETNAME, ULICENSE, UMODULE, UPARTALL, UCHAT
+    for(i=0;i<UCOMM_LEN; i++) {
+        ucommands[i]=udefault;
+    }
+    ucommands[UJOIN] = ujoin;
+    ucommands[ULIST] = ulist;
+
+}

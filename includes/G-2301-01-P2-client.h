@@ -2,6 +2,5 @@
 #define _CLIENT_H
 
 void* rcv_thread(void* d);
-
-#define SOCKETD_CLIENT socketd_client
+int client_socketsnd(char*);
 #endif 
