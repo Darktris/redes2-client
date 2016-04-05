@@ -1,6 +1,8 @@
 #include <redes2/ircxchat.h>
 #include <G-2301-01-P2-client.h>
 #include <G-2301-01-P2-ucomm.h>
+#include <G-2301-01-P2-ccomm.h>
+#include <G-2301-01-P1-tools.h>
 #include <syslog.h>
 #define DOWN pthread_mutex_lock
 #define UP pthread_mutex_unlock
@@ -38,11 +40,11 @@ int client_socketsnd_thread(char *msg) {
 
 int client_socketrcv(char* msg, size_t size) {
     _client_socketrcv(msg, size); 
-    IRCInterface_PlaneRegisterInMessage (msg);
+    if(strlen(msg) > 0) IRCInterface_PlaneRegisterInMessage (msg);
 }
 int client_socketrcv_thread(char* msg, size_t size) {
     _client_socketrcv(msg, size); 
-    IRCInterface_PlaneRegisterInMessageThread(msg);
+    if(strlen(msg) > 0) IRCInterface_PlaneRegisterInMessageThread(msg);
 }
 /** 
  * \defgroup IRCInterfaceCallbacks Callbaks del interfaz
@@ -646,13 +648,13 @@ void IRCInterface_NewCommandText(char *command)
     syslog(LOG_INFO, "Command text: %s", command);
     if(ret == IRCERR_NOUSERCOMMAND) {
         //SENDMSGWINDOW
-        syslog(LOG_INFO, "Command text: MSG", command);
+        syslog(LOG_INFO, "Command text: MSG");
     } else if(ret < 0) {
         //ERROR
-        syslog(LOG_INFO, "Command text: ERROR", command);
+        syslog(LOG_INFO, "Command text: ERROR");
     } else {
         ucommands[ret](command);
-        syslog(LOG_INFO, "Command text: COMM", command);
+        syslog(LOG_INFO, "Command text: COMM");
     }
 }
 
@@ -1094,12 +1096,24 @@ long IRCInterface_Connect(char *nick, char *user, char *realname, char *password
 
 void* rcv_thread(void *d) {
     char *msg, *comm, *next, *command;
+    long ret;
     msg = malloc(8192);
     while(1) {
         client_socketrcv(msg, 8192);
         next = IRC_UnPipelineCommands (msg, &command, NULL);
         do { 
             syslog(LOG_INFO,"%s", command);
+            ret = IRC_CommandQuery (command);
+            switch(ret) {
+                case IRCERR_NOCOMMAND:
+                    syslog(LOG_INFO, "Not a valid IRC command");
+                    break;
+                case IRCERR_UNKNOWNCOMMAND:
+                    cdefault(command);
+                    break;
+                default:
+                    ccommands[ret](command);
+            }
             if(command!=NULL) free(command); //??
             next = IRC_UnPipelineCommands(NULL, &command, next);
         } while(next!=NULL);
@@ -1136,6 +1150,7 @@ int main (int argc, char *argv[])
     DOWN(&mutexsnd);
 
     init_ucomm();
+    init_ccomm();
 
 	/* La función IRCInterface_Run debe ser llamada al final      */
 	/* del main y es la que activa el interfaz gráfico quedándose */
