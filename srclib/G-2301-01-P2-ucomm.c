@@ -7,6 +7,7 @@
   @date 2016/02/10
   */
 #include <redes2/irc.h>
+#include <redes2/ircxchat.h>
 #include <syslog.h>
 #include <G-2301-01-P1-tools.h>
 #include <G-2301-01-P2-client.h>
@@ -44,12 +45,10 @@ void uList(char* command) {
 
     IRCMsg_List(&comm, NULL, channel, NULL);
     client_socketsnd(comm);
-    puts(comm);
     if(comm) free(comm);
 
     if(channel) free(channel);
     if(st) free(st);
-    puts("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 }
 
 /**
@@ -98,7 +97,7 @@ void uNames(char* command) {
 }
 
 /**
-  @brief Atiende el comando de usuario NAMES
+  @brief Atiende el comando de usuario WHOIS
   @param command: El comando recibido
 */
 void uWhoIs(char* command) {
@@ -111,7 +110,27 @@ void uWhoIs(char* command) {
     if(nick) free(nick);
 }
 
+/**
+  @brief Atiende el comando de usuario PING
+  @param command: El comando recibido
+*/
+void uPing(char* command) {
+    IRCInterface_WriteSystem ("AVISO", "El comando PING solo soporta el envío de un PING al servidor conectado para comprobar la conexión");
+    client_socketsnd("PING 0001234567890\r\n"); 
+}
 
+/**
+  @brief Atiende el comando de usuario TOPIC
+  @param command: El comando recibido
+*/
+void uTopic(char* command) {
+    char *comm, *topic;
+    IRCUserParse_Topic (command, &topic);
+    IRCMsg_Topic(&comm, NULL, IRCInterface_ActiveChannelName(), topic); 
+    client_socketsnd(comm);
+    if(topic) free(topic);
+    if(comm) free(comm);
+} 
 void init_ucomm() {
     int i;
     //UNAMES, UHELP, ULIST, UJOIN, UPART, ULEAVE, UQUIT, UNICK, UAWAY, UWHOIS, UINVITE, UKICK, UTOPIC, UME, UMSG, UQUERY, UNOTICE, UNOTIFY, UIGNORE, UPING, UWHO, UWHOWAS, UISON, UCYCLE, UMOTD, URULES, ULUSERS, UVERSION, UADMIN, UUSERHOST, UKNOCK, UVHOST, UMODE, UTIME, UBOTMOTD, UIDENTIFY, UDNS, UUSERIP, USTATS, UCTCP, UDCC, UMAP, ULINKS, USETNAME, ULICENSE, UMODULE, UPARTALL, UCHAT
@@ -123,4 +142,6 @@ void init_ucomm() {
     ucommands[ULIST] = uList;
     ucommands[UNICK] = uNick;
     ucommands[UWHOIS] = uWhoIs;
+    ucommands[UPING] = uPing;
+    ucommands[UTOPIC] = uTopic;
 }
