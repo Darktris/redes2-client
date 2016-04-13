@@ -1,7 +1,7 @@
 #ifndef _CCOMM_H
 #define _CCOMM_H
 
-#define CCOMM_LEN 400
+#define CCOMM_LEN 10000
 void cdefault(char* command);
 void cRplMotd(char* command);
 typedef void(*ccomm_t)(char*);

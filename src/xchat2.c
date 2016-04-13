@@ -3,6 +3,7 @@
 #include <G-2301-01-P2-ucomm.h>
 #include <G-2301-01-P2-ccomm.h>
 #include <G-2301-01-P1-tools.h>
+#include <G-2301-01-P1-tcp.h>
 #include <syslog.h>
 #define DOWN pthread_mutex_lock
 #define UP pthread_mutex_unlock
@@ -29,22 +30,25 @@ int _client_socketrcv(char* msg, size_t size) {
 }
 
 int client_socketsnd(char *msg) {
-    IRCInterface_PlaneRegisterOutMessage(msg);
+    if(strlen(msg) > 2) IRCInterface_PlaneRegisterOutMessage(msg);
     _client_socketsnd(msg);
 }
 
 int client_socketsnd_thread(char *msg) {
-    IRCInterface_PlaneRegisterOutMessageThread(msg);
+    if(strlen(msg) > 2) IRCInterface_PlaneRegisterOutMessageThread(msg);
     _client_socketsnd(msg);
 }
 
 int client_socketrcv(char* msg, size_t size) {
     _client_socketrcv(msg, size); 
-    if(strlen(msg) > 0) IRCInterface_PlaneRegisterInMessage (msg);
+    msg[size]=0;
+    if(strlen(msg) > 2) IRCInterface_PlaneRegisterInMessage (msg);
 }
 int client_socketrcv_thread(char* msg, size_t size) {
-    _client_socketrcv(msg, size); 
-    if(strlen(msg) > 0) IRCInterface_PlaneRegisterInMessageThread(msg);
+    _client_socketrcv(msg, size);
+    msg[size]=0;
+    printf("rcv[%d]: %s", strlen(msg), msg);
+    if(strlen(msg) > 2) IRCInterface_PlaneRegisterInMessageThread(msg);
 }
 /** 
  * \defgroup IRCInterfaceCallbacks Callbaks del interfaz
@@ -644,11 +648,14 @@ void IRCInterface_NewTopicEnter(char *topicdata)
 void IRCInterface_NewCommandText(char *command)
 {
     long ret;
+    char *comm; 
     ret = IRCUser_CommandQuery (command);
     syslog(LOG_INFO, "Command text: %s", command);
     if(ret == IRCERR_NOUSERCOMMAND) {
-        //SENDMSGWINDOW
         syslog(LOG_INFO, "Command text: MSG");
+        IRCMsg_Privmsg(&comm, NULL, IRCInterface_ActiveChannelName(), command);
+        client_socketsnd(comm);
+        free(comm);
     } else if(ret < 0) {
         //ERROR
         syslog(LOG_INFO, "Command text: ERROR");
@@ -1077,16 +1084,16 @@ long IRCInterface_Connect(char *nick, char *user, char *realname, char *password
     pthread_create(&t, NULL, rcv_thread, NULL);
 
     if(password && strlen(password) > 1) {
-        IRCMsg_Pass (&comm, NULL, password);
+        IRCMsg_Pass(&comm, NULL, password);
         client_socketsnd(comm); 
         free(comm);
     }
     
-    IRCMsg_Nick (&comm, NULL, nick, NULL);
+    IRCMsg_Nick(&comm, NULL, nick, NULL);
     client_socketsnd(comm); 
     free(comm);
     
-    IRCMsg_User (&comm, NULL, user, "1", realname);
+    IRCMsg_User(&comm, NULL, user, "1", realname);
     client_socketsnd(comm); 
     free(comm);
 
@@ -1099,7 +1106,7 @@ void* rcv_thread(void *d) {
     long ret;
     msg = malloc(8192);
     while(1) {
-        client_socketrcv(msg, 8192);
+        client_socketrcv_thread(msg, 8192);
         next = IRC_UnPipelineCommands (msg, &command, NULL);
         do { 
             syslog(LOG_INFO,"%s", command);

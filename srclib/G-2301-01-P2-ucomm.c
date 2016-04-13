@@ -14,10 +14,10 @@
 #include <G-2301-01-P2-ucomm.h>
 
 ucomm_t ucommands[UCOMM_LEN];
+
 /**
-  @brief Atiende el comando JOIN
+  @brief Atiende el comando de usuario JOIN
   @param command: El comando recibido
-  @param more: Puntero a estructura conn_data auxiliar
 */
 void uJoin(char* command) {
     char *channel, *pass, *comm;
@@ -34,9 +34,8 @@ void uJoin(char* command) {
 } 
 
 /**
-  @brief Atiende el comando LIST
+  @brief Atiende el comando de usuario LIST
   @param command: El comando recibido
-  @param more: Puntero a estructura conn_data auxiliar
 */
 void uList(char* command) {
     char *channel, *st, *comm;
@@ -52,9 +51,8 @@ void uList(char* command) {
 }
 
 /**
-  @brief Atiende el comando NICK
+  @brief Atiende el comando de usuario NICK
   @param command: El comando recibido
-  @param more: Puntero a estructura conn_data auxiliar
 */
 void uNick(char* command) {
     char* nick, *comm;
@@ -68,19 +66,49 @@ void uNick(char* command) {
 }
  
 /**
-  @brief Atiende el comando PART
+  @brief Atiende el comando de usuario PART
   @param command: El comando recibido
-  @param more: Puntero a estructura conn_data auxiliar
 */
 void uPart(char* command) {
     char* msg;
     IRCUserParse_Part(command, &msg);
 
-    //IRCMsg_Part(&comm, NULL, 
+    //IRCMsg_Part(&comm, NULL, channel, tar);
 }
 void udefault(char* command) {
     syslog(LOG_INFO, "udef: ERROR no command");    
 }
+
+/**
+  @brief Atiende el comando de usuario NAMES
+  @param command: El comando recibido
+*/
+void uNames(char* command) {
+    char* channel, *tar, *comm;
+    IRCUserParse_Names(command, &channel, &tar);
+
+    IRCMsg_Names(&comm, NULL, channel, tar);
+    client_socketsnd(comm);
+
+    if(comm) free(comm);
+    if(channel) free(channel);
+    if(tar) free(tar);
+}
+
+/**
+  @brief Atiende el comando de usuario NAMES
+  @param command: El comando recibido
+*/
+void uWhoIs(char* command) {
+    char* nick, *comm;
+    IRCUserParse_Whois(command, &nick);
+    IRCMsg_Whois (&comm, NULL, NULL, nick);
+    client_socketsnd(comm);
+
+    if(comm) free(comm);
+    if(nick) free(nick);
+}
+
 
 void init_ucomm() {
     int i;
@@ -88,7 +116,9 @@ void init_ucomm() {
     for(i=0;i<UCOMM_LEN; i++) {
         ucommands[i]=udefault;
     }
+    ucommands[UNAMES] = uNames;
     ucommands[UJOIN] = uJoin;
     ucommands[ULIST] = uList;
     ucommands[UNICK] = uNick;
+    ucommands[UWHOIS] = uWhoIs;
 }
