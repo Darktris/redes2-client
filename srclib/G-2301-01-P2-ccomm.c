@@ -56,7 +56,7 @@ void cRplMotd(char* command) {
     char* prefix, *nick, *msg;
     IRCParse_RplMotd (command, &prefix, &nick, &msg);
 
-    IRCInterface_WriteSystemThread(nick, msg);
+    IRCInterface_WriteSystemThread(NULL, msg);
     if(nick) free(nick);
     if(msg) free(msg);
     if(prefix) free(prefix);
@@ -66,7 +66,7 @@ void cRplEndOfMotd(char* command) {
     char* prefix, *nick, *msg;
     IRCParse_RplEndOfMotd (command, &prefix, &nick, &msg);
 
-    IRCInterface_WriteSystemThread(nick, "End of MOTD command");
+    IRCInterface_WriteSystemThread(NULL, "End of MOTD command");
     if(nick) free(nick);
     if(msg) free(msg);
     if(prefix) free(prefix);
@@ -81,7 +81,7 @@ void cRplList(char* command) {
     IRCParse_RplList (command, &prefix, &nick, &channel, &visible, &topic); 
 
     sprintf(text, "%s\t\t%s\t\t%s", channel, visible, !topic?"":topic);
-    IRCInterface_WriteSystemThread(nick, text);   
+    IRCInterface_WriteSystemThread(NULL, text);   
     if(prefix) free(prefix);
     if(nick) free(nick);
     if(channel) free(channel);
@@ -92,7 +92,7 @@ void cRplList(char* command) {
 void cRplListEnd(char* command) {
     char* prefix, *nick, *msg;
     IRCParse_RplListEnd (command, &prefix, &nick, &msg);
-    IRCInterface_WriteSystemThread(nick, "End of LIST");
+    IRCInterface_WriteSystemThread(NULL, "End of LIST");
     if(prefix) free(prefix);
     if(nick) free(nick);
     if(msg) free(msg);
@@ -256,8 +256,38 @@ void cRplTopic(char* command) {
     IRCInterface_WriteChannelThread(IRCInterface_ActiveChannelName(), NULL, "El canal no tiene topic definido");
 }
 
-   
+void cRplTopicWhoTime(char* command) {
+   //TODO Eloy no parsea, yo no programo 
+}
+void cRplWelcome(char* command) {
+    char *prefix, *nick, *msg;
+    char text[500];
+    IRCParse_RplWelcome (command, &prefix, &nick, &msg);
+    sprintf(text,"Mensaje del servidor %s", msg);
+    IRCInterface_WriteSystemThread(NULL, text);
+    if(prefix) free(prefix);
+    if(nick) free(nick); 
+    if(msg) free(msg);
+}
 
+void cRplMotdStart(char* command) {
+    IRCInterface_WriteSystemThread(NULL, "Inicio del MOTD");
+}
+
+void cRplNamReply(char* command) {
+    char *prefix, *nick, *type, *channel, *msg; 
+    char *u;
+	char text[500];
+    IRCParse_RplNamReply(command, &prefix, &nick, &type, &channel, &msg);
+    sprintf(text,"Los usuarios del canal son: %s", msg);
+    IRCInterface_WriteSystemThread(NULL, text);
+
+    u = strtok(msg," ");
+    while(u) {
+        u = strtok(NULL, " ");
+    } 
+	
+}
 void init_ccomm() {
     int i;
     /*  NICK, OPER, MODE, SERVICE, QUIT, SQUIT, JOIN, PART, TOPIC, NAMES, LIST, INVITE, KICK, PRIVMSG, NOTICE, MOTD, LUSERS, VERSION, STATS, LINKS, TIME, CONNECT, TRACE, ADMIN, INFO, SERVLIST, SQUERY, WHO, WHOIS, WHOWAS, KILL, PING, PONG, ERROR, AWAY, REHASH, DIE, RESTART, SUMMON, USERS, WALLOPS, USERHOST, ISON, HELP, RULES, SERVER, ENCAP, CNOTICE, CPRIVMSG, NAMESX, SILENCE, UHNAMES, WATCH, KNOCK, USERIP,SETNAME, ERR_NEEDMOREPARAMS, ERR_ALREADYREGISTRED, ERR_NONICKNAMEGIVEN, ERR_ERRONEUSNICKNAME, ERR_NICKNAMEINUSE, ERR_NICKCOLLISION, ERR_UNAVAILRESOURCE, ERR_RESTRICTED, RPL_YOUREOPER, ERR_NOOPERHOST, ERR_PASSWDMISMATCH, RPL_UMODEIS, ERR_UMODEUNKNOWNFLAG, ERR_USERSDONTMATCH, RPL_YOURESERVICE, RPL_YOURHOST, RPL_MYINFO, ERR_NOPRIVILEGES, ERR_NOSUCHSERVER, RPL_ENDOFWHO, RPL_ENDOFWHOIS, RPL_ENDOFWHOWAS, ERR_WASNOSUCHNICK, RPL_WHOWASUSER, RPL_WHOISUSER, RPL_WHOISCHANNELS, RPL_WHOISOPERATOR, RPL_WHOISSERVER, RPL_WHOISIDLE, RPL_WHOREPLY, ERR_BADMASK, ERR_CANNOTSENDTOCHAN, ERR_NOTEXTTOSEND, ERR_NOTOPLEVEL, ERR_WILDTOPLEVEL, ERR_BADCHANMASK, ERR_BADCHANNELKEY, RPL_BANLIST, ERR_BANNEDFROMCHAN, ERR_CHANNELISFULL, RPL_CHANNELMODEIS, ERR_CHANOPRIVSNEEDED, RPL_ENDOFBANLIST, RPL_ENDOFEXCEPTLIST, RPL_ENDOFINVITELIST, RPL_ENDOFNAMES, RPL_EXCEPTLIST, RPL_INVITELIST, ERR_INVITEONLYCHAN, RPL_INVITING, ERR_KEYSET, RPL_LISTSTART, RPL_LIST, RPL_LISTEND, RPL_NAMREPLY, ERR_NOCHANMODES, ERR_NOSUCHCHANNEL,ERR_NOTONCHANNEL, RPL_NOTOPIC, ERR_TOOMANYCHANNELS, ERR_TOOMANYTARGETS, ERR_UNKNOWNMODE, ERR_USERNOTINCHANNEL, ERR_USERONCHANNEL, RPL_UNIQOPIS, RPL_TOPIC, RPL_ADMINME, RPL_ADMINLOC1, RPL_ADMINLOC2, RPL_ADMINEMAIL, RPL_INFO, RPL_ENDOFLINKS, RPL_ENDOFINFO, RPL_ENDOFMOTD, RPL_ENDOFSTATS, RPL_LINKS, RPL_LUSERCHANNELS, RPL_LUSERCLIENT, RPL_LUSERME, RPL_LUSEROP, RPL_LUSERUNKNOWN, RPL_MOTD, RPL_MOTDSTART, ERR_NOMOTD, RPL_STATSCOMMANDS, RPL_STATSLINKINFO, RPL_STATSOLINE, RPL_STATSUPTIME, RPL_TIME, RPL_TRACECLASS, RPL_TRACECONNECT, RPL_TRACECONNECTING, RPL_TRACEHANDSHAKE, RPL_TRACELINK, RPL_TRACENEWTYPE, RPL_TRACEOPERATOR, RPL_TRACESERVER, RPL_TRACESERVICE, RPL_TRACEUSER, RPL_TRACEUNKNOWN, RPL_TRACELOG, RPL_TRACEEND, RPL_VERSION, ERR_NOSUCHSERVICE, RPL_SERVLIST, RPL_SERVLISTEND, ERR_CANTKILLSERVER, ERR_NOORIGIN, RPL_ENDOFUSERS, ERR_FILEERROR, RPL_ISON, ERR_NOLOGIN, RPL_NOUSERS, RPL_NOWAWAY, RPL_REHASHING, ERR_SUMMONDISABLED, RPL_SUMMONING, RPL_UNAWAY, RPL_USERHOST, RPL_USERS, ERR_USERSDISABLED, RPL_USERSSTART, RPL_AWAY, ERR_NOSUCHNICK, RPL_WELCOME, RPL_CREATED, RPL_BOUNCE, RPL_TRYAGAIN, ERR_UNKNOWNCOMMAND, ERR_NOADMININFO, ERR_NOTREGISTERED, ERR_NOPERMFORHOST, ERR_YOUREBANNEDCREEP, ERR_YOUWILLBEBANNED, ERR_BANLISTFULL, ERR_UNIQOPPRIVSNEEDED, ERR_NORECIPIENT, ERR_TOOMANYMATCHES, RPL_YOURID, RPL_CREATIONTIME, RPL_LOCALUSERS, y RPL_GLOBALUSERS,RPL_TOPICWHOTIME, RPL_CHANNELURL. */
@@ -280,4 +310,7 @@ void init_ccomm() {
     ccommands[TOPIC]=cTopic;
     ccommands[RPL_TOPIC]=cRplTopic;
     ccommands[RPL_NOTOPIC]=cRplNoTopic;
+    ccommands[RPL_WELCOME]=cRplWelcome;
+    ccommands[RPL_MOTDSTART]=cRplMotdStart;
+    ccommands[RPL_NAMREPLY]=cRplNamReply;
 }

@@ -87,8 +87,8 @@ void udefault(char* command) {
 void uNames(char* command) {
     char* channel, *tar, *comm;
     IRCUserParse_Names(command, &channel, &tar);
-
-    IRCMsg_Names(&comm, NULL, channel, tar);
+    
+    IRCMsg_Names(&comm, NULL, channel?channel:IRCInterface_ActiveChannelName(), tar);
     client_socketsnd(comm);
 
     if(comm) free(comm);
