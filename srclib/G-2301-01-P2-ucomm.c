@@ -44,10 +44,12 @@ void uList(char* command) {
 
     IRCMsg_List(&comm, NULL, channel, NULL);
     client_socketsnd(comm);
+    puts(comm);
     if(comm) free(comm);
 
     if(channel) free(channel);
     if(st) free(st);
+    puts("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 }
 
 /**

@@ -14,6 +14,16 @@ pthread_mutex_t mutexrcv;
 
 pthread_t t;
 
+char* get_unick() {
+  char *mynick, *myuser, *myrealn, *pass, *myserver;
+  char *nick, *user, *host, *server;
+  int port, ssl;
+  IRCInterface_GetMyUserInfo(&mynick, &myuser, &myrealn, NULL, &myserver, &port, &ssl);
+  if(myuser) free(myuser);
+  if(myrealn) free(myrealn);
+  if(myserver) free(myserver);
+  return mynick;
+}
 int _client_socketsnd(char * msg) {
     DOWN(&mutexsnd);
     tcpsocket_snd(socketd_client, msg, strlen(msg));
@@ -41,12 +51,12 @@ int client_socketsnd_thread(char *msg) {
 
 int client_socketrcv(char* msg, size_t size) {
     _client_socketrcv(msg, size); 
-    msg[size]=0;
+    msg[size-1]=0;
     if(strlen(msg) > 2) IRCInterface_PlaneRegisterInMessage (msg);
 }
 int client_socketrcv_thread(char* msg, size_t size) {
     _client_socketrcv(msg, size);
-    msg[size]=0;
+    msg[size-1]=0;
     printf("rcv[%d]: %s", strlen(msg), msg);
     if(strlen(msg) > 2) IRCInterface_PlaneRegisterInMessageThread(msg);
 }
@@ -653,6 +663,7 @@ void IRCInterface_NewCommandText(char *command)
     syslog(LOG_INFO, "Command text: %s", command);
     if(ret == IRCERR_NOUSERCOMMAND) {
         syslog(LOG_INFO, "Command text: MSG");
+        IRCInterface_WriteChannel(IRCInterface_ActiveChannelName(), get_unick(), command);   
         IRCMsg_Privmsg(&comm, NULL, IRCInterface_ActiveChannelName(), command);
         client_socketsnd(comm);
         free(comm);
@@ -1104,9 +1115,9 @@ long IRCInterface_Connect(char *nick, char *user, char *realname, char *password
 void* rcv_thread(void *d) {
     char *msg, *comm, *next, *command;
     long ret;
-    msg = malloc(8192);
+    msg = malloc(8192*sizeof(char));
     while(1) {
-        client_socketrcv_thread(msg, 8192);
+        client_socketrcv_thread(msg, 8191);
         next = IRC_UnPipelineCommands (msg, &command, NULL);
         do { 
             syslog(LOG_INFO,"%s", command);

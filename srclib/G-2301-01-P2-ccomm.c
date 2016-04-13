@@ -72,7 +72,7 @@ void cRplEndOfMotd(char* command) {
     if(prefix) free(prefix);
 }
 void cdefault(char* command) {
-    syslog(LOG_INFO, "Command %s is not being processed", command);
+    //syslog(LOG_INFO, "Command %s is not being processed", command);
 }
 
 void cRplList(char* command) {
@@ -99,16 +99,27 @@ void cRplListEnd(char* command) {
 }
 
 void cJoin(char* command) {
-    char *prefix, *channel, *key, *msg;
+    char *prefix, *channel, *key, *msg, *mynick, *myuser, *myrealn, *pass, *myserver;
+    char *nick, *user, *host, *server;
+    char text[500];
+    int port, ssl;
+    IRCInterface_GetMyUserInfoThread(&mynick, &myuser, &myrealn, NULL, &myserver, &port, &ssl);
+    IRCParse_Join (command, &prefix, &channel, &key, &msg); 
+    IRCParse_ComplexUser (prefix, &nick, &user, &host, &server);
 
-/*   IRCParse_Join (command, &prefix, &channel, &key, &msg); 
-   IRCParse_ComplexUser (prefix, &old, &user, &host, &server);
+    if(strcmp(nick, mynick)==0) {
+       if(!IRCInterface_QueryChannelExist(channel)) IRCInterface_AddNewChannelThread(msg, IRCInterface_ModeToIntMode("w"));
+       IRCInterface_WriteChannelThread (msg, nick, "Has entrado al canal");
+    } else {
+        sprintf(text, "%s ha entrado al canal", nick);
+        if(!IRCInterface_QueryChannelExist(channel)) IRCInterface_AddNewChannelThread(msg, IRCInterface_ModeToIntMode("w"));
+        IRCInterface_WriteChannelThread (msg, nick,text);
+    }
 
+    if(user) free(user);
+    if(host) free(host);
+    if(server) free(server);
 
-   if(user) free(user);
-   if(host) free(host);
-   if(server) free(server);
-**/
 }
 
 void cPrivMsg(char* command) {
@@ -172,6 +183,7 @@ void cRplWhoisServer(char* command) {
     if(server) free(server);
     if(sinfo) free(sinfo);
 }
+
 void cRplWhoisIdle(char* command) {
     char *prefix, *nick, *dest, *server, *sinfo, *msg;
     char text[500];
@@ -195,6 +207,27 @@ void cRplEndOfWhois(char* command) {
     IRCParse_RplEndOfWhoIs (command, &prefix, &nick, &dest, &msg);
     sprintf(text,"[%s] Final de WHOIS", dest);
     IRCInterface_WriteSystemThread(nick, text);
+
+    if(prefix) free(prefix);
+    if(nick) free(nick);
+    if(dest) free(dest);
+    if(msg) free(dest);
+}
+
+void cPing(char* command) {
+    char* prefix, *server, *server2, *msg;
+    char* comm;
+    IRCParse_Ping (command, &prefix, &server, &server2, &msg);
+
+
+    IRCMsg_Pong(&comm, NULL, NULL, NULL, server); 
+    client_socketsnd_thread(comm);
+
+    if(prefix) free(prefix);
+    if(server) free(server);
+    if(server2) free(server2);
+    if(msg) free(msg);
+    if(comm) free(comm);
 }
 void init_ccomm() {
     int i;
@@ -204,6 +237,7 @@ void init_ccomm() {
     ccommands[RPL_MOTD]=cRplMotd;
     ccommands[RPL_ENDOFMOTD]=cRplEndOfMotd;
     ccommands[NICK]=cNick;
+    ccommands[JOIN]=cJoin;
     ccommands[RPL_LIST]=cRplList;
     ccommands[RPL_LISTEND]=cRplListEnd;
     ccommands[PRIVMSG]=cPrivMsg;
@@ -213,6 +247,5 @@ void init_ccomm() {
     ccommands[RPL_WHOISSERVER]=cRplWhoisServer;
     ccommands[RPL_WHOISIDLE]=cRplWhoisIdle;
     ccommands[RPL_ENDOFWHOIS]=cRplEndOfWhois;
+    ccommands[PING]=cPing;
 }
-
-
