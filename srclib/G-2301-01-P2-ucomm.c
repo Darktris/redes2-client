@@ -66,16 +66,6 @@ void uNick(char* command) {
     if(nick) free(nick);
 }
  
-/**
-  @brief Atiende el comando de usuario PART
-  @param command: El comando recibido
-*/
-void uPart(char* command) {
-    char* msg;
-    IRCUserParse_Part(command, &msg);
-
-    //IRCMsg_Part(&comm, NULL, channel, tar);
-}
 void udefault(char* command) {
     syslog(LOG_INFO, "udef: ERROR no command");    
 }
@@ -131,6 +121,46 @@ void uTopic(char* command) {
     if(topic) free(topic);
     if(comm) free(comm);
 } 
+
+/**
+  @brief Atiende el comando de usuario UWHO
+  @param command: El comando recibido
+  */
+void uWho(char* command) {
+    char *mask, *chan, *comm;
+    IRCUserParse_Who(command, &mask); 
+    if(mask) {
+       IRCMsg_Who (&comm, NULL, mask, NULL);
+    } else {
+        chan = IRCInterface_ActiveChannelName();
+        IRCMsg_Who (&comm, NULL, strcmp(chan,"System")==0?"0":chan, NULL);
+    }
+    
+    client_socketsnd(comm);
+    if(comm) free(comm);
+    if(mask) free(mask);
+}
+
+/**
+  @brief Atiende el comando de usuario UPART
+  @param command: El comando recibido
+  */
+void uPart(char* command) {
+    char *msg, *comm;
+    IRCUserParse_Part(command, &msg);
+    IRCMsg_Part(&comm, NULL, IRCInterface_ActiveChannelName(), msg?msg:"Saliendo :)"); 
+    client_socketsnd(comm);
+    if(comm) free(comm);
+    if(msg) free(msg);
+}
+ 
+/**
+  @brief Atiende el comando de usuario UAWAY
+  @param command: El comando recibido
+  */
+void uAway(char* command) {
+
+}
 void init_ucomm() {
     int i;
     //UNAMES, UHELP, ULIST, UJOIN, UPART, ULEAVE, UQUIT, UNICK, UAWAY, UWHOIS, UINVITE, UKICK, UTOPIC, UME, UMSG, UQUERY, UNOTICE, UNOTIFY, UIGNORE, UPING, UWHO, UWHOWAS, UISON, UCYCLE, UMOTD, URULES, ULUSERS, UVERSION, UADMIN, UUSERHOST, UKNOCK, UVHOST, UMODE, UTIME, UBOTMOTD, UIDENTIFY, UDNS, UUSERIP, USTATS, UCTCP, UDCC, UMAP, ULINKS, USETNAME, ULICENSE, UMODULE, UPARTALL, UCHAT
@@ -144,4 +174,6 @@ void init_ucomm() {
     ucommands[UWHOIS] = uWhoIs;
     ucommands[UPING] = uPing;
     ucommands[UTOPIC] = uTopic;
+    ucommands[UWHO] = uWho;
+    ucommands[UPART] = uPart;
 }

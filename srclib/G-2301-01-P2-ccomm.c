@@ -31,19 +31,19 @@ void cNick(char* command) {
     if(host) free(host);
     if(server) free(server);
     
-    //IRCInterface_GetMyUserInfoThread(&mnick, &user, &realname, &password, &server, &port, &ssl);
-    //if(user) free(user);
-    //if(realname) free(realname);
-    //if(password) free(password);
-    //if(server) free(server);
+    IRCInterface_GetMyUserInfoThread(&mnick, &user, &realname,NULL, &server, &port, &ssl);
+    if(user) free(user);
+    if(realname) free(realname);
+    if(server) free(server);
     
-    //if(!strcmp(mnick, old)) { 
+    if(!strcmp(mnick, old)) { 
         sprintf(text, "Usted es ahora conocido como %s", msg);
         IRCInterface_WriteSystemThread(nick, text);
-    //} else {
-        //sprintf(text, "%s es ahora conocido como %s", old, msg);
-        //IRCInterface_WriteSystemThread(nick, text);
-    //}
+    } else {
+        sprintf(text, "%s es ahora conocido como %s", old, msg);
+        //CHANGE NICK UI
+        IRCInterface_WriteSystemThread(nick, text);
+    }
     if(mnick) free(mnick);
     IRCInterface_ChangeNickThread(old, msg);
     if(old) free(old);
@@ -108,12 +108,13 @@ void cJoin(char* command) {
     IRCParse_ComplexUser (prefix, &nick, &user, &host, &server);
 
     if(strcmp(nick, mynick)==0) {
-       if(!IRCInterface_QueryChannelExist(channel)) IRCInterface_AddNewChannelThread(msg, IRCInterface_ModeToIntMode("w"));
+       if(!IRCInterface_QueryChannelExist(msg)) IRCInterface_AddNewChannelThread(msg, IRCInterface_ModeToIntMode("w"));
        IRCInterface_WriteChannelThread (msg, nick, "Has entrado al canal");
     } else {
         sprintf(text, "%s ha entrado al canal", nick);
-        if(!IRCInterface_QueryChannelExist(channel)) IRCInterface_AddNewChannelThread(msg, IRCInterface_ModeToIntMode("w"));
+        if(!IRCInterface_QueryChannelExist(msg)) IRCInterface_AddNewChannelThread(msg, IRCInterface_ModeToIntMode("w"));
         IRCInterface_WriteChannelThread (msg, nick,text);
+        IRCInterface_AddNickChannelThread (msg, nick, nick, nick, nick, NONE); //TODO Ver estado del nick
     }
 
     if(user) free(user);
@@ -283,10 +284,38 @@ void cRplNamReply(char* command) {
     IRCInterface_WriteSystemThread(NULL, text);
 
     u = strtok(msg," ");
-    while(u) {
+    while(u) { 
+        IRCInterface_AddNickChannel (channel, u, u,u, u, u[0]=='@'?OPERATOR:(u[0]=='+'?VOICE:NONE));
         u = strtok(NULL, " ");
     } 
-	
+}
+
+void cRplWhoReply(char* command) {
+    char* prefix, *mnick, *channel, *user, *host, *server, *nick, *type, *msg, *realn;
+    int hopcount;
+    IRCParse_RplWhoReply (command, &prefix, &mnick, &channel, &user, &host, &server, &nick, &type, &msg, &hopcount, &realn);
+
+    IRCInterface_WriteSystemThread(NULL, nick);
+    
+}
+
+void cPart(char* command) {
+    char* prefix, *channel, *msg, *mynick, *myuser, *myrealn, *myserver, *nick, *user, *host, *server;
+    char text[500];
+    int port, ssl;
+    IRCParse_Part(command, &prefix, &channel, &msg); 
+
+    IRCInterface_GetMyUserInfoThread(&mynick, &myuser, &myrealn, NULL, &myserver, &port, &ssl);
+    IRCParse_ComplexUser (prefix, &nick, &user, &host, &server);
+
+    if(strcmp(mynick, nick)==0) {
+       IRCInterface_RemoveChannelThread(channel); 
+    } else {
+        sprintf(text,"El usuario %s ha dejado el canal", nick);
+        IRCInterface_WriteChannelThread(channel, NULL, text);
+        IRCInterface_DeleteNickChannelThread (channel, nick);
+    }
+
 }
 void init_ccomm() {
     int i;
@@ -308,9 +337,11 @@ void init_ccomm() {
     ccommands[RPL_ENDOFWHOIS]=cRplEndOfWhois;
     ccommands[PING]=cPing;
     ccommands[TOPIC]=cTopic;
+    ccommands[PART]=cPart;
     ccommands[RPL_TOPIC]=cRplTopic;
     ccommands[RPL_NOTOPIC]=cRplNoTopic;
     ccommands[RPL_WELCOME]=cRplWelcome;
     ccommands[RPL_MOTDSTART]=cRplMotdStart;
     ccommands[RPL_NAMREPLY]=cRplNamReply;
+    ccommands[RPL_WHOREPLY]=cRplWhoReply;
 }

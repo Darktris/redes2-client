@@ -58,7 +58,6 @@ int client_socketrcv_thread(char* msg, size_t size) {
     _client_socketrcv(msg, size);
     msg[size-1]=0;
     printf("rcv[%d]: %s", strlen(msg), msg);
-    if(strlen(msg) > 2) IRCInterface_PlaneRegisterInMessageThread(msg);
 }
 /** 
  * \defgroup IRCInterfaceCallbacks Callbaks del interfaz
@@ -1121,6 +1120,7 @@ void* rcv_thread(void *d) {
         next = IRC_UnPipelineCommands (msg, &command, NULL);
         do { 
             syslog(LOG_INFO,"%s", command);
+            if(strlen(msg) > 2) IRCInterface_PlaneRegisterInMessageThread(command);
             ret = IRC_CommandQuery (command);
             switch(ret) {
                 case IRCERR_NOCOMMAND:
