@@ -159,7 +159,26 @@ void uPart(char* command) {
   @param command: El comando recibido
   */
 void uAway(char* command) {
+    char* reason, *comm;
+    IRCUserParse_Away (command, &reason);
+    IRCMsg_Away (&comm,NULL, reason);
+    client_socketsnd(comm);
+    if(comm) free(comm);
+    if(reason) free(reason);
+}
 
+/**
+  @brief Atiende el comando de usuario UINVITE
+  @param command: El comando recibido
+  */
+void uInvite(char* command) {
+    char *nick,*channel, *comm; 
+    IRCUserParse_Invite (command, &nick, &channel);
+    IRCMsg_Invite (&comm, NULL, nick, channel?channel:IRCInterface_ActiveChannelName());
+    client_socketsnd(comm);
+    if(comm) free(comm);
+    if(nick) free(nick);
+    if(channel) free(channel);
 }
 void init_ucomm() {
     int i;
@@ -176,4 +195,6 @@ void init_ucomm() {
     ucommands[UTOPIC] = uTopic;
     ucommands[UWHO] = uWho;
     ucommands[UPART] = uPart;
+    ucommands[UAWAY] = uAway;
+    ucommands[UINVITE] = uInvite;
 }

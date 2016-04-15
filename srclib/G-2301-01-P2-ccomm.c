@@ -316,6 +316,22 @@ void cPart(char* command) {
         IRCInterface_DeleteNickChannelThread (channel, nick);
     }
 
+
+}
+void cRplAway(char* command) {
+    //TODO mostrar mensaje afk
+}
+
+void cRplNowAway(char* command) {
+    char* prefix, *nick, *msg, *chan;
+    IRCParse_RplNowAway (command, &prefix, &nick, &msg); 
+    chan = IRCInterface_ActiveChannelName();
+    if(strcmp(chan,"System")==0) 
+        IRCInterface_WriteSystemThread(NULL, "Has sido marcado como ausente");
+    IRCInterface_WriteChannelThread(chan, NULL, "Has sido marcado como ausente");
+    if(prefix) free(prefix);
+    if(nick) free(nick);
+    if(msg) free(msg);
 }
 void init_ccomm() {
     int i;
@@ -343,5 +359,6 @@ void init_ccomm() {
     ccommands[RPL_WELCOME]=cRplWelcome;
     ccommands[RPL_MOTDSTART]=cRplMotdStart;
     ccommands[RPL_NAMREPLY]=cRplNamReply;
+    ccommands[RPL_NOWAWAY]=cRplNowAway;
     ccommands[RPL_WHOREPLY]=cRplWhoReply;
 }
