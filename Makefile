@@ -16,7 +16,7 @@ BDIR = .
 _LIB = libredes2-G-2301-01-P2.a
 LIB = $(patsubst %,$(LDIR)/%,$(_LIB))
 
-_LOBJ = G-2301-01-P1-daemon.o G-2301-01-P1-tcp.o G-2301-01-P1-udp.o G-2301-01-P1-tools.o G-2301-01-P2-ucomm.o G-2301-01-P2-ccomm.o
+_LOBJ = G-2301-01-P1-daemon.o G-2301-01-P1-tcp.o G-2301-01-P1-udp.o G-2301-01-P2-rtp.o G-2301-01-P1-tools.o G-2301-01-P2-ucomm.o G-2301-01-P2-ccomm.o
 LOBJ = $(patsubst %,$(ODIR)/%,$(_LOBJ))
 
 _DEPS = 
