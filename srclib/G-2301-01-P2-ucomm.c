@@ -180,6 +180,23 @@ void uInvite(char* command) {
     if(nick) free(nick);
     if(channel) free(channel);
 }
+
+/**
+  @brief Atiende el comando de usuario UKICK
+  @param command: El comando recibido
+  */
+void uKick(char* command) {
+    char* n, *m;
+    char *comm;
+    IRCUserParse_Kick (command, &n, &m);
+
+    IRCMsg_Kick(&comm, NULL, IRCInterface_ActiveChannelName(), n, m?m:"Kicked from the channel");
+    client_socketsnd(comm);
+    if(comm) free(comm);
+    if(n) free(n);
+    if(m) free(m);
+
+}
 void init_ucomm() {
     int i;
     //UNAMES, UHELP, ULIST, UJOIN, UPART, ULEAVE, UQUIT, UNICK, UAWAY, UWHOIS, UINVITE, UKICK, UTOPIC, UME, UMSG, UQUERY, UNOTICE, UNOTIFY, UIGNORE, UPING, UWHO, UWHOWAS, UISON, UCYCLE, UMOTD, URULES, ULUSERS, UVERSION, UADMIN, UUSERHOST, UKNOCK, UVHOST, UMODE, UTIME, UBOTMOTD, UIDENTIFY, UDNS, UUSERIP, USTATS, UCTCP, UDCC, UMAP, ULINKS, USETNAME, ULICENSE, UMODULE, UPARTALL, UCHAT
@@ -197,4 +214,5 @@ void init_ucomm() {
     ucommands[UPART] = uPart;
     ucommands[UAWAY] = uAway;
     ucommands[UINVITE] = uInvite;
+    ucommands[UKICK] = uKick;
 }

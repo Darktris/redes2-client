@@ -72,7 +72,12 @@ void cRplEndOfMotd(char* command) {
     if(prefix) free(prefix);
 }
 void cdefault(char* command) {
-    //syslog(LOG_INFO, "Command %s is not being processed", command);
+    char *chan = IRCInterface_ActiveChannelName();
+    char text[500];
+    sprintf(text, "Comando no implementado %s", command);
+    if(strcmp(chan,"System")==0) 
+        IRCInterface_WriteSystemThread(NULL, text);
+    else IRCInterface_WriteChannelThread(chan, NULL, text);
 }
 
 void cRplList(char* command) {
@@ -136,7 +141,9 @@ void cPrivMsg(char* command) {
         IRCInterface_AddNewChannelThread(nick, IRCInterface_ModeToIntMode("w"));
         IRCInterface_WriteChannelThread(nick, nick, msg);
     }
+    //TODO liberar memoria
 }
+
 
 void cRplWhoisUser(char* command) {
     char *prefix, *nick, *dest, *name, *host, *realn;
@@ -253,10 +260,6 @@ void cRplTopic(char* command) {
     if(topic) free(topic);
 }
 
- void cRplNoTopic(char* command) {
-    IRCInterface_WriteChannelThread(IRCInterface_ActiveChannelName(), NULL, "El canal no tiene topic definido");
-}
-
 void cRplTopicWhoTime(char* command) {
    //TODO Eloy no parsea, yo no programo 
 }
@@ -288,13 +291,15 @@ void cRplNamReply(char* command) {
         IRCInterface_AddNickChannel (channel, u, u,u, u, u[0]=='@'?OPERATOR:(u[0]=='+'?VOICE:NONE));
         u = strtok(NULL, " ");
     } 
+
+    //TODO liberar memoria
 }
 
 void cRplWhoReply(char* command) {
     char* prefix, *mnick, *channel, *user, *host, *server, *nick, *type, *msg, *realn;
     int hopcount;
     IRCParse_RplWhoReply (command, &prefix, &mnick, &channel, &user, &host, &server, &nick, &type, &msg, &hopcount, &realn);
-
+    //TODO TERMINARLO
     IRCInterface_WriteSystemThread(NULL, nick);
     
 }
@@ -316,10 +321,19 @@ void cPart(char* command) {
         IRCInterface_DeleteNickChannelThread (channel, nick);
     }
 
-
+    //TODO liberar memoria
 }
+
 void cRplAway(char* command) {
-    //TODO mostrar mensaje afk
+    char* prefix, *nick, *dest, *msg;
+    char text[500];
+    IRCParse_RplAway (command, &prefix, &nick, &dest, &msg);
+    sprintf(text, "El usuario está AWAY. El mensaje que ha dejado es: %s", msg);
+    IRCInterface_WriteChannelThread(dest,dest,text);
+    if(prefix) free(prefix);
+    if(nick) free(nick);
+    if(dest) free(dest);
+    if(msg) free(msg);
 }
 
 void cRplNowAway(char* command) {
@@ -328,9 +342,67 @@ void cRplNowAway(char* command) {
     chan = IRCInterface_ActiveChannelName();
     if(strcmp(chan,"System")==0) 
         IRCInterface_WriteSystemThread(NULL, "Has sido marcado como ausente");
-    IRCInterface_WriteChannelThread(chan, NULL, "Has sido marcado como ausente");
+    else IRCInterface_WriteChannelThread(chan, NULL, "Has sido marcado como ausente");
     if(prefix) free(prefix);
     if(nick) free(nick);
+    if(msg) free(msg);
+}
+
+void cRplUnAway(char* command) {
+    char *chan = IRCInterface_ActiveChannelName();
+    if(strcmp(chan,"System")==0) 
+        IRCInterface_WriteSystemThread(NULL, "Ya no estás marcado como ausente");
+    else IRCInterface_WriteChannelThread(chan, NULL, "Ya no estás marcado como ausente");
+}
+
+void cRplNoTopic(char* command) {
+    char* p, *n, *ch, *topic;
+    IRCParse_RplNoTopic(command, &p, &n, &ch, &topic);
+
+    if(IRCInterface_QueryChannelExist(ch))
+        IRCInterface_WriteChannelThread(ch, NULL, "El canal no tiene TOPIC definido");
+    else IRCInterface_WriteSystemThread(NULL, "El canal no tiene TOPIC definido");
+    if(p) free(p);
+    if(n) free(n);
+    if(ch) free(ch);
+    if(topic) free(topic);
+}
+
+void cRplEndOfNames() {
+    IRCInterface_WriteSystemThread(NULL, "Fin de la lista de nombres");
+}
+
+void cKick(char* command) {
+    char* prefix, *channel, *msg, *mynick, *myuser, *myrealn, *myserver, *nick, *user, *host, *server, *dest;
+    char text[500];
+    int port, ssl;
+
+    IRCParse_Kick (command, &prefix, &channel, &dest, &msg);
+
+    IRCInterface_GetMyUserInfoThread(&mynick, &myuser, &myrealn, NULL, &myserver, &port, &ssl);
+    IRCParse_ComplexUser (prefix, &nick, &user, &host, &server);
+
+    if(strcmp(mynick, dest)==0) {
+       IRCInterface_RemoveChannelThread (channel); 
+       sprintf(text, "Has sido expulsado del canal por: %s. Razon: %s",nick, msg);
+       IRCInterface_WriteSystemThread(NULL, text);
+    } else {
+       sprintf(text, "El usuario %s ha sido expulsado del canal por %s. Razon: %s",dest, nick, msg);
+       IRCInterface_DeleteNickChannelThread (channel, dest);
+       IRCInterface_WriteChannelThread(channel, NULL, text);
+    }
+
+    //TODO Liberar memoria
+
+}
+
+void cErrChanOpPrivIsNeeded(char* command) {
+    char* prefix, *nick, *channel, *msg;
+    IRCParse_ErrChanOPrivsNeeded (command, &prefix, &nick, &channel, &msg);
+    IRCInterface_WriteChannelThread(channel, NULL, "Necesitas ser OPERATOR para realizar esta accion");
+    if(prefix) free(prefix);
+    if(nick) free(nick);
+    if(channel) free(channel);
     if(msg) free(msg);
 }
 void init_ccomm() {
@@ -354,6 +426,7 @@ void init_ccomm() {
     ccommands[PING]=cPing;
     ccommands[TOPIC]=cTopic;
     ccommands[PART]=cPart;
+    ccommands[KICK]=cKick;
     ccommands[RPL_TOPIC]=cRplTopic;
     ccommands[RPL_NOTOPIC]=cRplNoTopic;
     ccommands[RPL_WELCOME]=cRplWelcome;
@@ -361,4 +434,7 @@ void init_ccomm() {
     ccommands[RPL_NAMREPLY]=cRplNamReply;
     ccommands[RPL_NOWAWAY]=cRplNowAway;
     ccommands[RPL_WHOREPLY]=cRplWhoReply;
+    ccommands[RPL_AWAY]=cRplAway;
+    ccommands[RPL_ENDOFNAMES]=cRplEndOfNames;
+    ccommands[ERR_CHANOPRIVSNEEDED]=cErrChanOpPrivIsNeeded;
 }
