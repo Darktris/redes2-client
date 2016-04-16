@@ -175,7 +175,15 @@ void cRplWhoisChannels(char* command) {
     if(chann) free(chann);
 }
 void cRplWhoisOperator(char* command) {
-    //TODO Sgdo
+    char *p, *n, *dest, *msg;
+    char text[500];
+    IRCParse_RplWhoIsOperator (command, &p, &n, &dest, &msg);
+    sprintf(text,"[%s] es un operador del servidor", dest);
+    IRCInterface_WriteSystemThread(n, text);   
+    if(p) free(p);
+    if(n) free(n);
+    if(dest) free(dest);
+    if(msg) free(msg);
 }
 void cRplWhoisServer(char* command) {
     char *prefix, *nick, *dest, *server, *sinfo;
@@ -405,6 +413,104 @@ void cErrChanOpPrivIsNeeded(char* command) {
     if(channel) free(channel);
     if(msg) free(msg);
 }
+
+void cRplEndOfWho(char* command) {
+    IRCInterface_WriteSystemThread(NULL, "Fin del WHO"); 
+}
+
+void cNotice(char* command) {
+    char *prefix, *tar, *msg, *nick, *user, *host, *server;
+    char *filename=NULL, *hostname_destino=NULL;
+    unsigned long length, port;
+    int socketd;
+    char* buf;
+    IRCParse_Notice(command, &prefix, &tar, &msg);
+
+    IRCInterface_WriteSystemThread(tar, msg); 
+
+    if(msg[0]==1) {
+        if(sscanf(msg, "\001FSEND %ms %ms %ms %li %li",&nick, &filename, &hostname_destino, &port, &length) > 0) {
+            if(IRCInterface_RecibirDialogThread (nick, filename)) {
+                if(fork()==0) {
+                    buf = malloc(length);      
+                    client_tcpsocket_open(port, &socketd, hostname_destino); 
+                    tcpsocket_rcv(socketd, &buf, length, &port);
+                    puts(buf);
+                    exit(0);
+                }
+            }
+        } else if(sscanf(msg, "\001AUDIOCHAT %ms %li", &hostname_destino, &port) > 0) {
+            printf("host=%s, port=%li\n", hostname_destino, port);
+        } else puts("Formato incorrecto"); 
+
+    }
+    if(prefix) free(prefix);
+    if(tar) free(tar);
+    if(msg) free(msg);
+}
+
+void cErrBadChannelKey(char* command) {
+    char* chan=IRCInterface_ActiveChannelName();
+    if(strcmp(chan,"System")==0) 
+        IRCInterface_WriteSystemThread(NULL, "Clave del canal incorrecta");
+    else IRCInterface_WriteChannelThread(chan, NULL, "Clave del canal incorrecta");
+}
+
+void cErrConnection(char* command) {
+    sleep(1);
+    //IRCInterface_ErrorDialog("Hubo algún error con la conexión. Por favor pruebe su conexión al servidor así como pruebe con otros nicks/user/realname si estos fallan");
+}
+
+void cErrNoSuchNick(char* command) {
+    char *prefix, *nick, *dest, *msg;
+    char text[500];
+    char* chan=IRCInterface_ActiveChannelName();
+    IRCParse_ErrNoSuchNick (command, &prefix, &nick,  &dest, &msg);
+    sprintf(text, "No se encontró el nick: %s", dest);
+    if(strcmp(chan,"System")==0) 
+        IRCInterface_WriteSystemThread(NULL, text);
+    else IRCInterface_WriteChannelThread(chan, NULL, text);
+
+    if(prefix) free(prefix);
+    if(nick) free(nick);
+    if(dest) free(dest);
+    if(msg) free(msg);
+}
+
+void cErrNoSuchChannel(char* command) {
+    char *prefix, *nick, *dest, *msg;
+    char text[500];
+    char* chan=IRCInterface_ActiveChannelName();
+    IRCParse_ErrNoSuchChannel(command, &prefix, &nick,  &dest, &msg);
+    sprintf(text, "No se encontró el canal: %s", dest);
+    if(strcmp(chan,"System")==0) 
+        IRCInterface_WriteSystemThread(NULL, text);
+    else IRCInterface_WriteChannelThread(chan, NULL, text);
+
+    if(prefix) free(prefix);
+    if(nick) free(nick);
+    if(dest) free(dest);
+    if(msg) free(msg);
+}
+
+void cErrBannedFromChannel(char* command) {
+    char *p, *n, *c, *msg;
+    char *chan;
+    char text[500];
+    IRCParse_ErrBannedFromChan (command, &p, &n, &c, &msg);
+    sprintf(text,"Estás baneado del canal %s. Mensaje: %s", c, msg);
+    chan = IRCInterface_ActiveChannelName();
+    if(strcmp(chan,"System")==0) 
+        IRCInterface_WriteSystemThread(NULL, text);
+    else IRCInterface_WriteChannelThread(c, NULL, text);
+
+    if(p) free(p);
+    if(n) free(n);
+    if(chan) free(chan);
+    if(msg) free(msg);
+
+}
+
 void init_ccomm() {
     int i;
     /*  NICK, OPER, MODE, SERVICE, QUIT, SQUIT, JOIN, PART, TOPIC, NAMES, LIST, INVITE, KICK, PRIVMSG, NOTICE, MOTD, LUSERS, VERSION, STATS, LINKS, TIME, CONNECT, TRACE, ADMIN, INFO, SERVLIST, SQUERY, WHO, WHOIS, WHOWAS, KILL, PING, PONG, ERROR, AWAY, REHASH, DIE, RESTART, SUMMON, USERS, WALLOPS, USERHOST, ISON, HELP, RULES, SERVER, ENCAP, CNOTICE, CPRIVMSG, NAMESX, SILENCE, UHNAMES, WATCH, KNOCK, USERIP,SETNAME, ERR_NEEDMOREPARAMS, ERR_ALREADYREGISTRED, ERR_NONICKNAMEGIVEN, ERR_ERRONEUSNICKNAME, ERR_NICKNAMEINUSE, ERR_NICKCOLLISION, ERR_UNAVAILRESOURCE, ERR_RESTRICTED, RPL_YOUREOPER, ERR_NOOPERHOST, ERR_PASSWDMISMATCH, RPL_UMODEIS, ERR_UMODEUNKNOWNFLAG, ERR_USERSDONTMATCH, RPL_YOURESERVICE, RPL_YOURHOST, RPL_MYINFO, ERR_NOPRIVILEGES, ERR_NOSUCHSERVER, RPL_ENDOFWHO, RPL_ENDOFWHOIS, RPL_ENDOFWHOWAS, ERR_WASNOSUCHNICK, RPL_WHOWASUSER, RPL_WHOISUSER, RPL_WHOISCHANNELS, RPL_WHOISOPERATOR, RPL_WHOISSERVER, RPL_WHOISIDLE, RPL_WHOREPLY, ERR_BADMASK, ERR_CANNOTSENDTOCHAN, ERR_NOTEXTTOSEND, ERR_NOTOPLEVEL, ERR_WILDTOPLEVEL, ERR_BADCHANMASK, ERR_BADCHANNELKEY, RPL_BANLIST, ERR_BANNEDFROMCHAN, ERR_CHANNELISFULL, RPL_CHANNELMODEIS, ERR_CHANOPRIVSNEEDED, RPL_ENDOFBANLIST, RPL_ENDOFEXCEPTLIST, RPL_ENDOFINVITELIST, RPL_ENDOFNAMES, RPL_EXCEPTLIST, RPL_INVITELIST, ERR_INVITEONLYCHAN, RPL_INVITING, ERR_KEYSET, RPL_LISTSTART, RPL_LIST, RPL_LISTEND, RPL_NAMREPLY, ERR_NOCHANMODES, ERR_NOSUCHCHANNEL,ERR_NOTONCHANNEL, RPL_NOTOPIC, ERR_TOOMANYCHANNELS, ERR_TOOMANYTARGETS, ERR_UNKNOWNMODE, ERR_USERNOTINCHANNEL, ERR_USERONCHANNEL, RPL_UNIQOPIS, RPL_TOPIC, RPL_ADMINME, RPL_ADMINLOC1, RPL_ADMINLOC2, RPL_ADMINEMAIL, RPL_INFO, RPL_ENDOFLINKS, RPL_ENDOFINFO, RPL_ENDOFMOTD, RPL_ENDOFSTATS, RPL_LINKS, RPL_LUSERCHANNELS, RPL_LUSERCLIENT, RPL_LUSERME, RPL_LUSEROP, RPL_LUSERUNKNOWN, RPL_MOTD, RPL_MOTDSTART, ERR_NOMOTD, RPL_STATSCOMMANDS, RPL_STATSLINKINFO, RPL_STATSOLINE, RPL_STATSUPTIME, RPL_TIME, RPL_TRACECLASS, RPL_TRACECONNECT, RPL_TRACECONNECTING, RPL_TRACEHANDSHAKE, RPL_TRACELINK, RPL_TRACENEWTYPE, RPL_TRACEOPERATOR, RPL_TRACESERVER, RPL_TRACESERVICE, RPL_TRACEUSER, RPL_TRACEUNKNOWN, RPL_TRACELOG, RPL_TRACEEND, RPL_VERSION, ERR_NOSUCHSERVICE, RPL_SERVLIST, RPL_SERVLISTEND, ERR_CANTKILLSERVER, ERR_NOORIGIN, RPL_ENDOFUSERS, ERR_FILEERROR, RPL_ISON, ERR_NOLOGIN, RPL_NOUSERS, RPL_NOWAWAY, RPL_REHASHING, ERR_SUMMONDISABLED, RPL_SUMMONING, RPL_UNAWAY, RPL_USERHOST, RPL_USERS, ERR_USERSDISABLED, RPL_USERSSTART, RPL_AWAY, ERR_NOSUCHNICK, RPL_WELCOME, RPL_CREATED, RPL_BOUNCE, RPL_TRYAGAIN, ERR_UNKNOWNCOMMAND, ERR_NOADMININFO, ERR_NOTREGISTERED, ERR_NOPERMFORHOST, ERR_YOUREBANNEDCREEP, ERR_YOUWILLBEBANNED, ERR_BANLISTFULL, ERR_UNIQOPPRIVSNEEDED, ERR_NORECIPIENT, ERR_TOOMANYMATCHES, RPL_YOURID, RPL_CREATIONTIME, RPL_LOCALUSERS, y RPL_GLOBALUSERS,RPL_TOPICWHOTIME, RPL_CHANNELURL. */
@@ -417,6 +523,7 @@ void init_ccomm() {
     ccommands[RPL_LIST]=cRplList;
     ccommands[RPL_LISTEND]=cRplListEnd;
     ccommands[PRIVMSG]=cPrivMsg;
+    ccommands[NOTICE]=cNotice;
     ccommands[RPL_WHOISUSER]=cRplWhoisUser;
     ccommands[RPL_WHOISCHANNELS]=cRplWhoisChannels;
     ccommands[RPL_WHOISOPERATOR]=cRplWhoisOperator;
@@ -436,5 +543,15 @@ void init_ccomm() {
     ccommands[RPL_WHOREPLY]=cRplWhoReply;
     ccommands[RPL_AWAY]=cRplAway;
     ccommands[RPL_ENDOFNAMES]=cRplEndOfNames;
+    ccommands[RPL_ENDOFWHO]=cRplEndOfWho;
     ccommands[ERR_CHANOPRIVSNEEDED]=cErrChanOpPrivIsNeeded;
+    ccommands[ERR_NOSUCHNICK]=cErrNoSuchNick;
+    ccommands[ERR_NOSUCHCHANNEL]=cErrNoSuchChannel;
+    ccommands[ERR_BANNEDFROMCHAN]=cErrBannedFromChannel;
+    
+    /* Errores de conexion */ 
+    //ccommands[ERR_NICKNAMEINUSE]=cErrConnection;
+    //ccommands[ERR_NICKCOLLISION]=cErrConnection;
+    //ccommands[ERR_PASSWDMISMATCH]=cErrConnection;
+
 }

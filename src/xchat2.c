@@ -7,13 +7,12 @@
 #include <syslog.h>
 #define DOWN pthread_mutex_lock
 #define UP pthread_mutex_unlock
-
+#define TOKEN 1
 int socketd_client;
 pthread_mutex_t mutexsnd;
 pthread_mutex_t mutexrcv;
 
 pthread_t t;
-
 char* get_unick() {
   char *mynick, *myuser, *myrealn, *pass, *myserver;
   char *nick, *user, *host, *server;
@@ -24,6 +23,17 @@ char* get_unick() {
   if(myserver) free(myserver);
   return mynick;
 }
+char* get_uhost() {
+  char *mynick, *myuser, *myrealn, *pass, *myserver;
+  char *nick, *user, *host, *server;
+  int port, ssl;
+  IRCInterface_GetMyUserInfo(&mynick, &myuser, &myrealn, NULL, &myserver, &port, &ssl);
+  if(myuser) free(myuser);
+  if(myrealn) free(myrealn);
+  if(mynick) free(mynick);
+  return myserver;
+}
+
 int _client_socketsnd(char * msg) {
     DOWN(&mutexsnd);
     tcpsocket_snd(socketd_client, msg, strlen(msg));
@@ -105,6 +115,10 @@ int client_socketrcv_thread(char* msg, size_t size) {
 
 void IRCInterface_ActivateProtectTopic(char * channel)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "+t", NULL);
+  client_socketsnd(comm);
+  free(comm);
 }
 
 /**
@@ -137,6 +151,10 @@ void IRCInterface_ActivateProtectTopic(char * channel)
 
 void IRCInterface_DeactivateProtectTopic(char * channel)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "-t", NULL);
+  client_socketsnd(comm);
+  free(comm);
 }
 
 /**
@@ -169,6 +187,11 @@ void IRCInterface_DeactivateProtectTopic(char * channel)
  
 void IRCInterface_ActivateExternalMessages(char * channel)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "+n", NULL);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -201,6 +224,11 @@ void IRCInterface_ActivateExternalMessages(char * channel)
  
 void IRCInterface_DeactivateExternalMessages(char * channel)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "-n", NULL);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -233,6 +261,11 @@ void IRCInterface_DeactivateExternalMessages(char * channel)
  
 void IRCInterface_ActivateSecret(char * channel)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "+s", NULL);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -265,6 +298,11 @@ void IRCInterface_ActivateSecret(char * channel)
  
 void IRCInterface_DeactivateSecret(char * channel)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "+s", NULL);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -297,6 +335,11 @@ void IRCInterface_DeactivateSecret(char * channel)
  
 void IRCInterface_ActivateInvite(char * channel)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "+i", NULL);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -329,6 +372,11 @@ void IRCInterface_ActivateInvite(char * channel)
  
 void IRCInterface_DeactivateInvite(char * channel)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "-i", NULL);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -361,6 +409,11 @@ void IRCInterface_DeactivateInvite(char * channel)
  
 void IRCInterface_ActivatePrivate(char * channel)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "+p", NULL);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -393,6 +446,11 @@ void IRCInterface_ActivatePrivate(char * channel)
  
 void IRCInterface_DeactivatePrivate(char * channel)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "-p", NULL);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -425,6 +483,11 @@ void IRCInterface_DeactivatePrivate(char * channel)
  
 void IRCInterface_ActivateModerated(char * channel)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "+m", NULL);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -457,6 +520,11 @@ void IRCInterface_ActivateModerated(char * channel)
  
 void IRCInterface_DeactivateModerated(char * channel)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "-m", NULL);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -490,7 +558,12 @@ void IRCInterface_DeactivateModerated(char * channel)
 */
  
 void IRCInterface_ActivateChannelKey(char * channel, char *key)
-{
+{  
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "+k", key);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -523,6 +596,11 @@ void IRCInterface_ActivateChannelKey(char * channel, char *key)
  
 void IRCInterface_DeactivateChannelKey(char * channel)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "-k", NULL);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -557,6 +635,13 @@ void IRCInterface_DeactivateChannelKey(char * channel)
  
 void IRCInterface_ActivateNicksLimit(char * channel, int limit)
 {
+  char *comm;
+  char l[200];
+  sprintf(l, "%s", limit);
+  IRCMsg_Mode (&comm, NULL, channel, "+l", l);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -589,6 +674,11 @@ void IRCInterface_ActivateNicksLimit(char * channel, int limit)
  
 void IRCInterface_DeactivateNicksLimit(char * channel)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "-l", NULL);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -622,6 +712,11 @@ void IRCInterface_DeactivateNicksLimit(char * channel)
  
 void IRCInterface_NewTopicEnter(char *topicdata)
 {
+  char *comm;
+  IRCMsg_Topic (&comm, NULL, IRCInterface_ActiveChannelName(), topicdata);
+  client_socketsnd(comm);
+  free(comm);
+
 }
 
 /**
@@ -706,6 +801,12 @@ void IRCInterface_NewCommandText(char *command)
  
 void IRCInterface_GiveOp(char *channel, char *nick)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "+o", nick);
+  client_socketsnd(comm);
+  free(comm);
+
+
 }
 
 /**
@@ -739,6 +840,12 @@ void IRCInterface_GiveOp(char *channel, char *nick)
  
 void IRCInterface_TakeOp(char *channel, char *nick)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "-o", nick);
+  client_socketsnd(comm);
+  free(comm);
+
+
 }
 
 /**
@@ -772,6 +879,12 @@ void IRCInterface_TakeOp(char *channel, char *nick)
  
 void IRCInterface_GiveVoice(char *channel, char *nick)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "+v", nick);
+  client_socketsnd(comm);
+  free(comm);
+
+
 }
 
 /**
@@ -805,6 +918,12 @@ void IRCInterface_GiveVoice(char *channel, char *nick)
  
 void IRCInterface_TakeVoice(char *channel, char *nick)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "-v", nick);
+  client_socketsnd(comm);
+  free(comm);
+
+
 }
 
 /**
@@ -838,6 +957,12 @@ void IRCInterface_TakeVoice(char *channel, char *nick)
  
 void IRCInterface_BanNick(char *channel, char *nick)
 {
+  char *comm;
+  IRCMsg_Mode (&comm, NULL, channel, "+b", nick);
+  client_socketsnd(comm);
+  free(comm);
+
+
 }
 
 /**
@@ -871,6 +996,10 @@ void IRCInterface_BanNick(char *channel, char *nick)
  
 void IRCInterface_KickNick(char *channel, char *nick)
 {
+  char *comm;
+  IRCMsg_Kick(&comm, NULL, channel, nick, "Kicked");
+  client_socketsnd(comm);
+  free(comm);
 }
 
 /**
@@ -903,12 +1032,53 @@ void IRCInterface_KickNick(char *channel, char *nick)
  *
  *<hr>
 */
- 
-boolean IRCInterface_SendFile(char *filename, char *nick, char *data, long unsigned int length)
-{
-	return TRUE;
+
+typedef struct {
+  int sockfd;
+  char* data;
+  unsigned long l;
+} _thread_file;
+
+void* fileThread(void* d) {
+	tcpsocket_args args={0};
+  _thread_file* s = (_thread_file*) d;
+
+  printf("Waiting for connection\n");
+  tcpsocket_accept(s->sockfd,&args);
+  printf("Sending\n");
+  tcpsocket_snd(args.acceptd, s->data, s->l);
+
+  printf("End of connection\n");
+  close(s->sockfd);
+  free(s);
+  return NULL;
 }
 
+boolean IRCInterface_SendFile(char *filename, char *nick, char *data, long unsigned int length)
+{
+  char comm[512];
+  pthread_t t2;
+  struct sockaddr_in my_addr;
+  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  listen(sockfd, 1); // se pone a la escucha el socket, máximo 1 cliente
+  socklen_t slen = sizeof(my_addr);
+  getsockname(sockfd, (struct sockaddr*)&my_addr, &slen);
+  printf("puerto asignado: %d\n", ntohs(my_addr.sin_port));
+
+  _thread_file* news = malloc(sizeof(_thread_file));
+  news->sockfd = sockfd;
+  news->data = data;
+  news->l = length;
+  pthread_create(&t2, NULL, fileThread, (void*) news);
+  
+
+
+  sprintf(comm, "NOTICE %s :%cFSEND %s %s %s %lu %lu\r\n", nick, TOKEN, nick, filename, get_uhost(), ntohs(my_addr.sin_port), length);
+  client_socketsnd(comm);
+
+  return TRUE;
+
+ }
 /**
  * \ingroup IRCInterfaceCallbacks
  *
@@ -1045,6 +1215,12 @@ boolean IRCInterface_ExitAudioChat(char *nick)
  
 boolean IRCInterface_DisconnectServer(char *server, int port)
 {
+  client_socketsnd("QUIT\r\n");
+
+
+  DOWN(&mutexrcv);
+  DOWN(&mutexsnd);
+  tcpsocket_close(socketd_client);
 	return TRUE;
 }
 
@@ -1093,7 +1269,7 @@ long IRCInterface_Connect(char *nick, char *user, char *realname, char *password
 
     pthread_create(&t, NULL, rcv_thread, NULL);
 
-    if(password && strlen(password) > 1) {
+    if(password && strlen(password) > 0) {
         IRCMsg_Pass(&comm, NULL, password);
         client_socketsnd(comm); 
         free(comm);

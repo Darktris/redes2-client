@@ -195,8 +195,25 @@ void uKick(char* command) {
     if(comm) free(comm);
     if(n) free(n);
     if(m) free(m);
-
 }
+
+/**
+  @brief Atiende el comando de usuario UNOTICE
+  @param command: El comando recibido
+  */
+void uNotice(char* command) {
+    IRCInterface_WriteSystemThread("AVISO", "Los mensajes NOTICE se utilizan muchas veces para intercambiar información de administración. Se desaconseja su uso como mensajes de proposito general, para ello se dispone de PRIVMSG o MSG (llama a PRIVMSG), aunque se pueden usar con este propósito si el usuario así lo decide.");
+}
+
+void uMode(char* command) {
+    char* mode, *f;
+    char* comm;
+    IRCUserParse_Mode(command, &mode, &f);
+    IRCMsg_Mode (&comm, NULL, IRCInterface_ActiveChannelName(), mode, f);
+
+    client_socketsnd(comm);
+}
+
 void init_ucomm() {
     int i;
     //UNAMES, UHELP, ULIST, UJOIN, UPART, ULEAVE, UQUIT, UNICK, UAWAY, UWHOIS, UINVITE, UKICK, UTOPIC, UME, UMSG, UQUERY, UNOTICE, UNOTIFY, UIGNORE, UPING, UWHO, UWHOWAS, UISON, UCYCLE, UMOTD, URULES, ULUSERS, UVERSION, UADMIN, UUSERHOST, UKNOCK, UVHOST, UMODE, UTIME, UBOTMOTD, UIDENTIFY, UDNS, UUSERIP, USTATS, UCTCP, UDCC, UMAP, ULINKS, USETNAME, ULICENSE, UMODULE, UPARTALL, UCHAT
@@ -215,4 +232,5 @@ void init_ucomm() {
     ucommands[UAWAY] = uAway;
     ucommands[UINVITE] = uInvite;
     ucommands[UKICK] = uKick;
+    ucommands[UMODE] = uMode;
 }
