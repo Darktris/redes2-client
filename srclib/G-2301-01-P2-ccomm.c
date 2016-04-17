@@ -122,6 +122,10 @@ void cJoin(char* command) {
         IRCInterface_AddNickChannelThread (msg, nick, nick, nick, nick, NONE); //TODO Ver estado del nick
     }
 
+    sprintf(text, "MODE %s\r\n", msg);
+    client_socketsnd_thread(text);
+
+
     if(user) free(user);
     if(host) free(host);
     if(server) free(server);
@@ -448,6 +452,7 @@ void* rcvThread_file(void * msg ) {
     free(msg);
     pthread_exit(0);
 }
+
 void cNotice(char* command) {
     char *prefix, *tar, *msg, *nick, *user, *host, *server;
     char *filename=NULL, *hostname_destino=NULL;
@@ -568,12 +573,58 @@ void cMode(char* command) {
     if(channeluser[0]=='#' || channeluser[0]=='&') {
         if(user) {
             /* Modo de un usuario en un canal */
-           sprintf(text, "Se ha actualizado el modo del usuario %s (%s)", user, mode); 
-           IRCInterface_WriteChannelThread(channeluser, NULL, text);
+            if(mode[0]=='+')
+                switch(mode[1]) {
+                    case 'o':
+                        IRCInterface_ChangeNickStateChannelThread(channeluser, user, OPERATOR);
+                        sprintf(text, "El usuario %s ahora es operador", user); 
+                        IRCInterface_WriteChannelThread(channeluser, NULL, text);
+                        break;
+                    case 'v':
+                        IRCInterface_ChangeNickStateChannelThread(channeluser, user, VOICE);
+                        break;
+                    default: 
+                        sprintf(text, "Se ha actualizado el modo del usuario %s (%s)", user, mode); 
+                        IRCInterface_WriteChannelThread(channeluser, NULL, text);
+
+                }
+            else if (mode[0]=='-') {
+                switch(mode[1]) {
+                    case 'o':
+                        IRCInterface_ChangeNickStateChannelThread(channeluser, user, NONE);
+                        sprintf(text, "El usuario %s ya no es operador", user); 
+                        IRCInterface_WriteChannelThread(channeluser, NULL, text);
+                        break;
+                    case 'v':
+                        IRCInterface_ChangeNickStateChannelThread(channeluser, user, NONE);
+                        break;
+                    default: 
+                        sprintf(text, "Se ha actualizado el modo del usuario %s (%s)", user, mode); 
+                        IRCInterface_WriteChannelThread(channeluser, NULL, text);
+
+                }
+            }
+            else {
+                sprintf(text, "El modo del usuario es %s es (%s)", user, mode);
+                IRCInterface_WriteChannelThread(channeluser, NULL, text);
+                if(strpbrk(mode, "o")!=NULL)
+                    IRCInterface_ChangeNickStateChannelThread(channeluser, user, OPERATOR);
+                else if(strpbrk(mode, "v")!=NULL)
+                    IRCInterface_ChangeNickStateChannelThread(channeluser, user, VOICE);
+                else IRCInterface_ChangeNickStateChannelThread(channeluser, user, NONE);
+
+            }
         } else {
             /* Modo del canal */
+            if(mode[0]=='+') 
+                IRCInterface_AddModeChannelThread (channeluser, IRCInterface_ModeToIntModeThread(mode+1));
+            else if(mode[0]=='-')
+                IRCInterface_DelModeChannelThread (channeluser, IRCInterface_ModeToIntModeThread(mode+1));
+            else
+                IRCInterface_SetModeChannelThread (channeluser, IRCInterface_ModeToIntModeThread(mode));
+
             sprintf(text, "Se ha actualizado el modo del canal (%s)", mode); 
-           IRCInterface_WriteChannelThread(channeluser, NULL, text);
+            IRCInterface_WriteChannelThread(channeluser, NULL, text);
         }
     } else {
         /* Modo de un usuario */ 
@@ -581,6 +632,15 @@ void cMode(char* command) {
         IRCInterface_WriteSystemThread(NULL, text);
     }
     //TODO Liberar
+}
+
+void cRplChannelModeIs(char* command) {
+    char* prefix, *nick, *chan, *mode;
+    char text[500];
+    IRCParse_RplChannelModeIs(command, &prefix, &nick, &chan, &mode);
+    IRCInterface_SetModeChannelThread(chan, IRCInterface_ModeToIntModeThread(mode));
+    sprintf(text, "El modo del canal es %s", mode);
+    IRCInterface_WriteChannelThread(chan, NULL, text);
 
 }
 void init_ccomm() {
@@ -616,6 +676,7 @@ void init_ccomm() {
     ccommands[RPL_NOWAWAY]=cRplNowAway;
     ccommands[RPL_WHOREPLY]=cRplWhoReply;
     ccommands[RPL_AWAY]=cRplAway;
+    ccommands[RPL_CHANNELMODEIS]=cRplChannelModeIs;
     ccommands[RPL_ENDOFNAMES]=cRplEndOfNames;
     ccommands[RPL_ENDOFWHO]=cRplEndOfWho;
     ccommands[ERR_CHANOPRIVSNEEDED]=cErrChanOpPrivIsNeeded;

@@ -22,14 +22,13 @@ ucomm_t ucommands[UCOMM_LEN];
 */
 void uJoin(char* command) {
     char *channel, *pass, *comm;
-    
+    char com2[512]; 
     IRCUserParse_Join(command, &channel, &pass);
     syslog(LOG_INFO, "ujoin: parsing");
 
     IRCMsg_Join (&comm, NULL, channel, pass, NULL);
     client_socketsnd(comm);
     if(comm) free(comm);
-
     if(pass) free(pass);
     if(channel) free(pass);
 } 
