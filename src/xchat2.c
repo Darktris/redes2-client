@@ -4,6 +4,7 @@
 #include <G-2301-01-P2-ccomm.h>
 #include <G-2301-01-P1-tools.h>
 #include <G-2301-01-P1-tcp.h>
+#include <G-2301-01-P2-rtp.h>
 #include <syslog.h>
 
 #include<sys/socket.h>
@@ -16,11 +17,17 @@
 #define UP pthread_mutex_unlock
 #define TOKEN 1
 int socketd_client;
+int socket_audio;
+int flag;
+long port_dest;
+char host_dest[NI_MAXHOST];
 pthread_mutex_t mutexsnd;
 pthread_mutex_t mutexrcv;
-
+char buffrcv[200];
+char buffsnd[200];
 char host[NI_MAXHOST];
 pthread_t t;
+
 char* get_unick() {
   char *mynick, *myuser, *myrealn, *pass, *myserver;
   char *nick, *user, *host, *server;
@@ -30,6 +37,18 @@ char* get_unick() {
   if(myrealn) free(myrealn);
   if(myserver) free(myserver);
   return mynick;
+}
+
+void set_audio_host(char* c) {
+  strcpy(host_dest, c);
+}
+
+void set_audio_port(unsigned long p) {
+  port_dest = p;
+}
+
+void unlock_audio() {
+
 }
 char* get_uhost() {
   FILE *f;
@@ -1066,6 +1085,27 @@ void IRCInterface_KickNick(char *channel, char *nick)
   free(comm);
 }
 
+typedef struct {
+  int sockfd;
+  char* data;
+  unsigned long l;
+} _thread_file;
+
+void* fileThread(void* d) {
+	tcpsocket_args args={0};
+  _thread_file* s = (_thread_file*) d;
+
+  printf("Waiting for connection\n");
+  tcpsocket_accept(s->sockfd,&args);
+  printf("Sending\n");
+  tcpsocket_snd(args.acceptd, s->data, s->l);
+
+  printf("End of connection\n");
+  close(s->sockfd);
+  free(s);
+  return NULL;
+}
+
 /**
  * \ingroup IRCInterfaceCallbacks
  *
@@ -1097,26 +1137,6 @@ void IRCInterface_KickNick(char *channel, char *nick)
  *<hr>
 */
 
-typedef struct {
-  int sockfd;
-  char* data;
-  unsigned long l;
-} _thread_file;
-
-void* fileThread(void* d) {
-	tcpsocket_args args={0};
-  _thread_file* s = (_thread_file*) d;
-
-  printf("Waiting for connection\n");
-  tcpsocket_accept(s->sockfd,&args);
-  printf("Sending\n");
-  tcpsocket_snd(args.acceptd, s->data, s->l);
-
-  printf("End of connection\n");
-  close(s->sockfd);
-  free(s);
-  return NULL;
-}
 
 boolean IRCInterface_SendFile(char *filename, char *nick, char *data, long unsigned int length)
 {
@@ -1137,7 +1157,7 @@ boolean IRCInterface_SendFile(char *filename, char *nick, char *data, long unsig
   
 
 
-  sprintf(comm, "NOTICE %s :%cFSEND %s %s %s %lu %lu\r\n", nick, TOKEN, nick, filename, get_uhost(), ntohs(my_addr.sin_port), length);
+  sprintf(comm, "NOTICE %s :%cFSEND %s %s %s %lu %lu\r\n", nick, TOKEN, get_unick(), filename, get_uhost(), ntohs(my_addr.sin_port), length);
   printf("%s", comm);
   client_socketsnd(comm);
 
@@ -1175,9 +1195,55 @@ boolean IRCInterface_SendFile(char *filename, char *nick, char *data, long unsig
  *<hr>
 */
  
+
+void* audiosnd_t(void* d) {
+  rtpargs_t rargs;
+  rargs.pt = IRCSound_RecordFormat(PA_SAMPLE_ULAW, 1);
+
+  while(flag) {
+    rtp_sndpkg(socket_audio, host_dest, port_dest, rargs, buffsnd, 160);
+    IRCSound_RecordSound(buffsnd, 160); //8000KB/s * 20 ms = 160B
+  }
+}
+
+void* audiorcv_t(void* d) {
+  rtpargs_t rargs;
+  size_t len;
+  rargs.pt = IRCSound_RecordFormat(PA_SAMPLE_ULAW, 1);
+
+  while(flag) {
+    rtp_rcvpkg(socket_audio, host_dest, port_dest, &rargs, buffrcv, &len);
+    IRCSound_PlaySound(buffrcv, 160); //8000KB/s * 20 ms = 160B
+  }
+}
+
+
 boolean IRCInterface_StartAudioChat(char *nick)
 {
-	return TRUE;
+  struct sockaddr_in add;
+  struct sockaddr_in my_addr;
+  char comm[512];
+  socklen_t slen = sizeof(my_addr);
+  socket_audio = socket(AF_INET, SOCK_DGRAM, 0);
+
+  add.sin_family = AF_INET;
+  add.sin_port = 0;
+  add.sin_addr.s_addr = INADDR_ANY;
+  bzero(&add.sin_zero, 8);
+
+  bind(socket_audio, (struct sockaddr *)&add, sizeof(add));
+  getsockname(socket_audio, (struct sockaddr*)&my_addr, &slen);
+  printf("puerto asignado: %d\n", htons(my_addr.sin_port));
+
+  sprintf(comm, "NOTICE %s :%cAUDIOCHAT %s %s %lu\r\n", nick, TOKEN, get_uhost(), htons(my_addr.sin_port)); 
+      
+  client_socketsnd(comm);
+  
+
+  //IRCSound_RecordSound(buff, 160); //8000KB/s * 20 ms = 160B
+    
+  //tcpsocket_snd(buff, 
+  return TRUE;
 }
 
 /**
@@ -1403,19 +1469,21 @@ void* rcv_thread(void *d) {
 
 int main (int argc, char *argv[])
 {
-    pthread_mutex_init(&mutexsnd, NULL);
-    pthread_mutex_init(&mutexrcv, NULL);
-    DOWN(&mutexrcv);
-    DOWN(&mutexsnd);
+  IRCSound_OpenRecord();
+  IRCSound_OpenPlay();
+  pthread_mutex_init(&mutexsnd, NULL);
+  pthread_mutex_init(&mutexrcv, NULL);
+  DOWN(&mutexrcv);
+  DOWN(&mutexsnd);
 
-    init_ucomm();
-    init_ccomm();
+  init_ucomm();
+  init_ccomm();
 
-	/* La función IRCInterface_Run debe ser llamada al final      */
-	/* del main y es la que activa el interfaz gráfico quedándose */
-	/* en esta función hasta que se pulsa alguna salida del       */
-	/* interfaz gráfico.                                          */
-	IRCInterface_Run(argc, argv);
+  /* La función IRCInterface_Run debe ser llamada al final      */
+  /* del main y es la que activa el interfaz gráfico quedándose */
+  /* en esta función hasta que se pulsa alguna salida del       */
+  /* interfaz gráfico.                                          */
+  IRCInterface_Run(argc, argv);
 
-	return 0;
+  return 0;
 }

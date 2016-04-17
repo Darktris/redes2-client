@@ -470,8 +470,10 @@ void cNotice(char* command) {
                 pthread_create(&t3, NULL, rcvThread_file, msg);
             }
 
-        } else if(sscanf(msg, "\001AUDIOCHAT %ms %li", &hostname_destino, &port) > 0) {
-            printf("host=%s, port=%li\n", hostname_destino, port);
+        } else if(sscanf(msg, "\001AUDIOCHAT %ms %ms  %li",&nick, &hostname_destino, &port) > 0) {
+            set_audio_host(hostname_destino);
+            set_audio_port(port);
+            unlock_audio();
         } else puts("Formato incorrecto"); 
 
     }

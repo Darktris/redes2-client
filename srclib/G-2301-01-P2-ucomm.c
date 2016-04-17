@@ -205,14 +205,99 @@ void uNotice(char* command) {
 }
 
 void uMode(char* command) {
-    char* mode, *f;
+    char* mode=NULL, *f=NULL;
     char* comm;
     IRCUserParse_Mode(command, &mode, &f);
+    //sscanf(command, "/mode %ms %ms", mode, f);
     IRCMsg_Mode (&comm, NULL, IRCInterface_ActiveChannelName(), mode, f);
 
     client_socketsnd(comm);
 }
 
+/**
+  @brief Atiende el comando de usuario UHELP
+  @param command: El comando recibido
+  */
+void uHelp(char* command) {
+    IRCInterface_WriteSystem(NULL, 
+ "UNAMES, UHELP, ULIST, UJOIN, UPART, ULEAVE, UQUIT, UNICK, UAWAY, UWHOIS, UINVITE, UKICK, UTOPIC, UMSG, UQUERY, UNOTICE, UPING, UWHO, UCYCLE, UMOTD, UMODE, UPARTALL");
+}
+ 
+/**
+  @brief Atiende el comando de usuario UCYCLE
+  @param command: El comando recibido
+  */
+void uCycle(char* command) {
+    char **channels;
+    int numchannels;
+    int i;
+    char* comm;
+    char text[500];
+    IRCUserParse_Cycle (command, &channels, &numchannels);
+    for(i=0;i<numchannels;i++) {
+        sprintf(text, "PART %s\r\nJOIN %s\r\n", channels[i], channels[i]);
+        client_socketsnd(text);
+    }
+    printf("numchannels %d \n", numchannels);
+    if(numchannels==0) {
+        sprintf(text, "PART %s\r\nJOIN %s\r\n", IRCInterface_ActiveChannelName(), IRCInterface_ActiveChannelName());
+        client_socketsnd(text);
+    }
+}
+
+/**
+  @brief Atiende el comando de usuario UQUERY
+  @param command: El comando recibido
+  */
+void uQuery(char* command) {
+    char* tar, *msg;
+    char *comm=NULL;
+    IRCUserParse_Query (command, &tar, &msg);
+    if(!IRCInterface_QueryChannelExist (tar)) IRCInterface_AddNewChannel(tar, IRCInterface_ModeToIntMode("+")); 
+    if(msg) IRCInterface_WriteChannel(tar, get_unick(), msg);
+
+    IRCMsg_Privmsg (&comm, NULL, tar, msg);
+    client_socketsnd(comm);
+    if(tar) free(tar);
+    if(msg) free(msg);
+    if(comm) free(comm);
+}
+
+/**
+  @brief Atiende el comando de usuario UPRIV
+  @param command: El comando recibido
+  */
+void uPriv(char* command) {
+    char* tar, *msg;
+    char *comm=NULL;
+    IRCUserParse_Priv (command, &tar, &msg);
+
+    IRCMsg_Privmsg (&comm, NULL, tar, msg);
+    client_socketsnd(comm);
+    if(tar) free(tar);
+    if(msg) free(msg);
+    if(comm) free(comm);
+}
+
+/**
+  @brief Atiende el comando de usuario UPRIV
+  @param command: El comando recibido
+  */
+void uMsg(char* command) {
+    char* tar, *msg;
+    char *comm=NULL;
+    IRCUserParse_Msg (command, &tar, &msg);
+
+    IRCMsg_Privmsg (&comm, NULL, tar, msg);
+    client_socketsnd(comm);
+    if(tar) free(tar);
+    if(msg) free(msg);
+    if(comm) free(comm);
+}
+
+void uMotd(char* command) {
+    client_socketsnd("MOTD\r\n");
+} 
 void init_ucomm() {
     int i;
     //UNAMES, UHELP, ULIST, UJOIN, UPART, ULEAVE, UQUIT, UNICK, UAWAY, UWHOIS, UINVITE, UKICK, UTOPIC, UME, UMSG, UQUERY, UNOTICE, UNOTIFY, UIGNORE, UPING, UWHO, UWHOWAS, UISON, UCYCLE, UMOTD, URULES, ULUSERS, UVERSION, UADMIN, UUSERHOST, UKNOCK, UVHOST, UMODE, UTIME, UBOTMOTD, UIDENTIFY, UDNS, UUSERIP, USTATS, UCTCP, UDCC, UMAP, ULINKS, USETNAME, ULICENSE, UMODULE, UPARTALL, UCHAT
@@ -232,4 +317,9 @@ void init_ucomm() {
     ucommands[UINVITE] = uInvite;
     ucommands[UKICK] = uKick;
     ucommands[UMODE] = uMode;
+    ucommands[UQUERY] = uQuery;
+    //ucommands[UPRIV] = uPriv;
+    ucommands[UMSG] = uMsg;
+    ucommands[UCYCLE] = uCycle;
+    ucommands[UMOTD] = uMotd;
 }

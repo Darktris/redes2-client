@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -L$(LDIR) -I$(IDIR) -g `pkg-config --cflags gtk+-3.0`  
-LDFLAGS = -lpthread -lircredes -lircinterface -lsoundredes -lredes2-G-2301-01-P2 `pkg-config --libs gtk+-3.0` -rdynamic
+LDFLAGS = -lpthread -lircredes -lircinterface -lsoundredes -lredes2-G-2301-01-P2 -lsoundredes -lpulse -lpulse-simple `pkg-config --libs gtk+-3.0` -rdynamic
 AR = ar 
 
 TAR_FILE= G-2301-01-P1.tar.gz
