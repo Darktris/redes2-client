@@ -426,16 +426,15 @@ void* rcvThread_file(void * msg ) {
     char* buf;
     FILE* f;
     sscanf(msg, "\001FSEND %ms %ms %ms %li %li",&nick, &filename, &hostname_destino, &port, &length);
-    buf = malloc(length+1);      
+    buf = calloc((length)*sizeof(char),1);      
     printf("Longitud %lu\n",length);
     if(client_tcpsocket_open(port, &socketd, hostname_destino)<0) puts("Error socket");
-    if(tcpsocket_rcv(socketd, &buf, length+1, &port) < 0) puts("Error al recibir el archivo: rcv"); 
-    f = fopen(filename, "w+");
-    syslog(LOG_INFO,"%s",buf); 
-    if(f) {
-        puts("No se pudo abrir el fichero");
-        fwrite(buf, length, 1, f);
-    }
+    if(tcpsocket_rcv(socketd, buf, length+1, &port) < 0) puts("Error al recibir el archivo: rcv"); 
+    f = fopen(filename, "wb");
+    if(f) { 
+        fwrite(buf, 1, length, f);
+	fclose(f);
+    } else puts("No se pudo abrir el fichero");
     free(msg);
     pthread_exit(0);
 }
