@@ -418,12 +418,34 @@ void cRplEndOfWho(char* command) {
     IRCInterface_WriteSystemThread(NULL, "Fin del WHO"); 
 }
 
+void* rcvThread_file(void * msg ) {
+    char *filename=NULL, *hostname_destino=NULL;
+    char *prefix, *tar, *nick, *user, *host, *server;
+    unsigned long length, port;
+    int socketd;
+    char* buf;
+    FILE* f;
+    sscanf(msg, "\001FSEND %ms %ms %ms %li %li",&nick, &filename, &hostname_destino, &port, &length);
+    buf = malloc(length+1);      
+    printf("Longitud %lu\n",length);
+    if(client_tcpsocket_open(port, &socketd, hostname_destino)<0) puts("Error socket");
+    if(tcpsocket_rcv(socketd, &buf, length+1, &port) < 0) puts("Error al recibir el archivo: rcv"); 
+    f = fopen(filename, "w+");
+    syslog(LOG_INFO,"%s",buf); 
+    if(f) {
+        puts("No se pudo abrir el fichero");
+        fwrite(buf, length, 1, f);
+    }
+    free(msg);
+    pthread_exit(0);
+}
 void cNotice(char* command) {
     char *prefix, *tar, *msg, *nick, *user, *host, *server;
     char *filename=NULL, *hostname_destino=NULL;
     unsigned long length, port;
     int socketd;
     char* buf;
+    pthread_t t3;
     IRCParse_Notice(command, &prefix, &tar, &msg);
 
     IRCInterface_WriteSystemThread(tar, msg); 
@@ -431,14 +453,9 @@ void cNotice(char* command) {
     if(msg[0]==1) {
         if(sscanf(msg, "\001FSEND %ms %ms %ms %li %li",&nick, &filename, &hostname_destino, &port, &length) > 0) {
             if(IRCInterface_RecibirDialogThread (nick, filename)) {
-                if(fork()==0) {
-                    buf = malloc(length);      
-                    client_tcpsocket_open(port, &socketd, hostname_destino); 
-                    tcpsocket_rcv(socketd, &buf, length, &port);
-                    puts(buf);
-                    exit(0);
-                }
+                pthread_create(&t3, NULL, rcvThread_file, msg);
             }
+
         } else if(sscanf(msg, "\001AUDIOCHAT %ms %li", &hostname_destino, &port) > 0) {
             printf("host=%s, port=%li\n", hostname_destino, port);
         } else puts("Formato incorrecto"); 
@@ -446,7 +463,6 @@ void cNotice(char* command) {
     }
     if(prefix) free(prefix);
     if(tar) free(tar);
-    if(msg) free(msg);
 }
 
 void cErrBadChannelKey(char* command) {

@@ -5,6 +5,13 @@
 #include <G-2301-01-P1-tools.h>
 #include <G-2301-01-P1-tcp.h>
 #include <syslog.h>
+
+#include<sys/socket.h>
+#include<netdb.h>
+#include<ifaddrs.h>
+#include<stdlib.h>
+#include<unistd.h>
+
 #define DOWN pthread_mutex_lock
 #define UP pthread_mutex_unlock
 #define TOKEN 1
@@ -12,6 +19,7 @@ int socketd_client;
 pthread_mutex_t mutexsnd;
 pthread_mutex_t mutexrcv;
 
+char host[NI_MAXHOST];
 pthread_t t;
 char* get_unick() {
   char *mynick, *myuser, *myrealn, *pass, *myserver;
@@ -24,15 +32,71 @@ char* get_unick() {
   return mynick;
 }
 char* get_uhost() {
-  char *mynick, *myuser, *myrealn, *pass, *myserver;
-  char *nick, *user, *host, *server;
-  int port, ssl;
-  IRCInterface_GetMyUserInfo(&mynick, &myuser, &myrealn, NULL, &myserver, &port, &ssl);
-  if(myuser) free(myuser);
-  if(myrealn) free(myrealn);
-  if(mynick) free(mynick);
-  return myserver;
+  FILE *f;
+  char line[100] , *p , *c;
+
+  f = fopen("/proc/net/route" , "r");
+
+  while(fgets(line , 100 , f))
+  {
+    p = strtok(line , " \t");
+    c = strtok(NULL , " \t");
+
+    if(p!=NULL && c!=NULL)
+    {
+      if(strcmp(c , "00000000") == 0)
+      {
+        printf("Default interface is : %s \n" , p);
+        break;
+      }
+    }
+  }
+
+  //which family do we require , AF_INET or AF_INET6
+  int fm = AF_INET;
+  struct ifaddrs *ifaddr, *ifa;
+  int family , s;
+
+  if (getifaddrs(&ifaddr) == -1) 
+  {
+    perror("getifaddrs");
+    exit(EXIT_FAILURE);
+  }
+
+  //Walk through linked list, maintaining head pointer so we can free list later
+  for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) 
+  {
+    if (ifa->ifa_addr == NULL)
+    {
+      continue;
+    }
+
+    family = ifa->ifa_addr->sa_family;
+
+    if(strcmp( ifa->ifa_name , p) == 0)
+    {
+      if (family == fm) 
+      {
+        s = getnameinfo( ifa->ifa_addr, (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6) , host , NI_MAXHOST , NULL , 0 , NI_NUMERICHOST);
+
+        if (s != 0) 
+        {
+          printf("getnameinfo() failed: %s\n", gai_strerror(s));
+          exit(EXIT_FAILURE);
+        }
+
+        printf("address: %s", host);
+        return host;
+      }
+      printf("\n");
+    }
+  }
+
+  freeifaddrs(ifaddr);
+
+  return 0;
 }
+
 
 int _client_socketsnd(char * msg) {
     DOWN(&mutexsnd);
@@ -1074,6 +1138,7 @@ boolean IRCInterface_SendFile(char *filename, char *nick, char *data, long unsig
 
 
   sprintf(comm, "NOTICE %s :%cFSEND %s %s %s %lu %lu\r\n", nick, TOKEN, nick, filename, get_uhost(), ntohs(my_addr.sin_port), length);
+  printf("%s", comm);
   client_socketsnd(comm);
 
   return TRUE;
