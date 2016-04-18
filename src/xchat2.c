@@ -18,11 +18,13 @@
 #define TOKEN 1
 int socketd_client;
 int socket_audio;
-int flag;
+int flag=1;
 long port_dest;
 char host_dest[NI_MAXHOST];
 pthread_mutex_t mutexsnd;
 pthread_mutex_t mutexrcv;
+pthread_mutex_t maudio1;
+pthread_mutex_t maudio2;
 char buffrcv[200];
 char buffsnd[200];
 char host[NI_MAXHOST];
@@ -48,7 +50,7 @@ void set_audio_port(unsigned long p) {
 }
 
 void unlock_audio() {
-
+  UP(&maudio2);
 }
 char* get_uhost() {
   FILE *f;
@@ -1200,7 +1202,12 @@ void* audiosnd_t(void* d) {
   rtpargs_t rargs;
   rargs.pt = IRCSound_RecordFormat(PA_SAMPLE_ULAW, 1);
 
+    DOWN(&maudio1);
+    DOWN(&maudio2);
   while(flag) {
+    UP(&maudio2);
+    UP(&maudio1);
+    //printf("Sending %s %p\n", host_dest, port_dest);
     rtp_sndpkg(socket_audio, host_dest, port_dest, rargs, buffsnd, 160);
     IRCSound_RecordSound(buffsnd, 160); //8000KB/s * 20 ms = 160B
   }
@@ -1209,11 +1216,16 @@ void* audiosnd_t(void* d) {
 void* audiorcv_t(void* d) {
   rtpargs_t rargs;
   size_t len;
-  rargs.pt = IRCSound_RecordFormat(PA_SAMPLE_ULAW, 1);
 
+  IRCSound_PlayFormat(PA_SAMPLE_ULAW,1);
+    DOWN(&maudio1);
+    DOWN(&maudio2);
   while(flag) {
+    UP(&maudio2);
+    UP(&maudio1);
     rtp_rcvpkg(socket_audio, host_dest, port_dest, &rargs, buffrcv, &len);
-    IRCSound_PlaySound(buffrcv, 160); //8000KB/s * 20 ms = 160B
+    //printf("Received %s %p\n", host_dest, port_dest);
+    IRCSound_PlaySound(buffrcv, len); //8000KB/s * 20 ms = 160B
   }
 }
 
@@ -1235,14 +1247,12 @@ boolean IRCInterface_StartAudioChat(char *nick)
   getsockname(socket_audio, (struct sockaddr*)&my_addr, &slen);
   printf("puerto asignado: %d\n", htons(my_addr.sin_port));
 
-  sprintf(comm, "NOTICE %s :%cAUDIOCHAT %s %s %lu\r\n", nick, TOKEN, get_uhost(), htons(my_addr.sin_port)); 
+  sprintf(comm, "NOTICE %s :%cAUDIOCHAT %s %s %lu\r\n", nick, TOKEN, get_unick(), get_uhost(), htons(my_addr.sin_port)); 
       
   client_socketsnd(comm);
   
+  UP(&maudio1);
 
-  //IRCSound_RecordSound(buff, 160); //8000KB/s * 20 ms = 160B
-    
-  //tcpsocket_snd(buff, 
   return TRUE;
 }
 
@@ -1469,15 +1479,26 @@ void* rcv_thread(void *d) {
 
 int main (int argc, char *argv[])
 {
+  pthread_t t, tt;
+
   IRCSound_OpenRecord();
   IRCSound_OpenPlay();
   pthread_mutex_init(&mutexsnd, NULL);
   pthread_mutex_init(&mutexrcv, NULL);
+  pthread_mutex_init(&maudio1, NULL);
+  pthread_mutex_init(&maudio2, NULL);
   DOWN(&mutexrcv);
   DOWN(&mutexsnd);
 
+  DOWN(&maudio1);
+  DOWN(&maudio2);
+
   init_ucomm();
   init_ccomm();
+
+
+  pthread_create(&t, NULL, audiosnd_t, NULL);
+  pthread_create(&t, NULL, audiorcv_t, NULL);
 
   /* La función IRCInterface_Run debe ser llamada al final      */
   /* del main y es la que activa el interfaz gráfico quedándose */
