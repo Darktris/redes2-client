@@ -68,7 +68,7 @@ int rtp_sndpkg(int socketd, char* dst, uint16_t port, rtpargs_t args, void* data
           RTPERR en caso de error
 */
 int rtp_rcvpkg(int socketd, char* src, uint16_t port, rtpargs_t* args, void* data, size_t *len) {
-    uint8_t dgram[RTP_MAXLEN];
+    uint8_t dgram[RTP_MAXLEN+RTP_HLEN];
     size_t dlen;
 
     /* Control de errores */
@@ -77,7 +77,7 @@ int rtp_rcvpkg(int socketd, char* src, uint16_t port, rtpargs_t* args, void* dat
     }
 
     /* Recibir por socket UDP */
-    if(udpsocket_rcv(socketd,src,port,dgram,RTP_MAXLEN,&dlen)!=UDPOK) {
+    if(udpsocket_rcv(socketd,src,port,dgram,RTP_MAXLEN+RTP_HLEN,&dlen)!=UDPOK) {
         return RTPERR_ARGS;
     }
     *len=dlen-RTP_HLEN;

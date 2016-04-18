@@ -22,10 +22,10 @@ LOBJ = $(patsubst %,$(ODIR)/%,$(_LOBJ))
 _DEPS = 
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = xchat2.o 
+_OBJ = xchat2.o soundtest.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
-_BIN = xchat2
+_BIN = xchat2 soundtest
 BIN = $(patsubst %,$(BDIR)/%,$(_BIN))
 
 all: $(BIN)

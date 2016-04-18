@@ -12,7 +12,7 @@
 #define RTPERR_MEM -2
 
 /* Constantes */
-#define RTP_MAXLEN 65000
+#define RTP_MAXLEN 64984
 #define RTP_HLEN 16
 #define RTP_OFFSET 1
 
