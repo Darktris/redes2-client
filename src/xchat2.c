@@ -25,8 +25,8 @@ pthread_mutex_t mutexsnd;
 pthread_mutex_t mutexrcv;
 pthread_mutex_t maudio1;
 pthread_mutex_t maudio2;
-char buffrcv[200];
-char buffsnd[200];
+char buffrcv[2000];
+char buffsnd[2000];
 char host[NI_MAXHOST];
 pthread_t t;
 
@@ -1200,16 +1200,14 @@ boolean IRCInterface_SendFile(char *filename, char *nick, char *data, long unsig
 
 void* audiosnd_t(void* d) {
   rtpargs_t rargs;
-  rargs.pt = IRCSound_RecordFormat(PA_SAMPLE_ULAW, 1);
+  rargs.pt = IRCSound_RecordFormat(PA_SAMPLE_S16BE, 2);
 
     DOWN(&maudio1);
     DOWN(&maudio2);
   while(flag) {
-    UP(&maudio2);
-    UP(&maudio1);
     //printf("Sending %s %p\n", host_dest, port_dest);
-    rtp_sndpkg(socket_audio, host_dest, port_dest, rargs, buffsnd, 160);
-    IRCSound_RecordSound(buffsnd, 160); //8000KB/s * 20 ms = 160B
+    rtp_sndpkg(socket_audio, host_dest, port_dest, rargs, buffsnd, 900);
+    IRCSound_RecordSound(buffsnd, 900); //8000KB/s * 20 ms = 160B
   }
 }
 
@@ -1217,12 +1215,10 @@ void* audiorcv_t(void* d) {
   rtpargs_t rargs;
   size_t len;
 
-  IRCSound_PlayFormat(PA_SAMPLE_ULAW,1);
+  IRCSound_PlayFormat(PA_SAMPLE_S16BE,2);
     DOWN(&maudio1);
     DOWN(&maudio2);
   while(flag) {
-    UP(&maudio2);
-    UP(&maudio1);
     rtp_rcvpkg(socket_audio, host_dest, port_dest, &rargs, buffrcv, &len);
     //printf("Received %s %p\n", host_dest, port_dest);
     IRCSound_PlaySound(buffrcv, len); //8000KB/s * 20 ms = 160B
@@ -1323,6 +1319,7 @@ boolean IRCInterface_StopAudioChat(char *nick)
  
 boolean IRCInterface_ExitAudioChat(char *nick)
 {
+  flag=0;
 	return TRUE;
 }
 
