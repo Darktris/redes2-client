@@ -1,6 +1,6 @@
 /* vim: set ts=4 sw=4 et: */
 /**
-  @file G-2301-01-P1-irc.c
+  @file G-2301-01-P2-ccom.c
   @brief Libreria de manejo de mensajes IRC 
   @author Sergio Fuentes  <sergio.fuentesd@estudiante.uam.es>
   @author Daniel Perdices <daniel.perdices@estudiante.uam.es>
@@ -16,6 +16,7 @@
 #include <G-2301-01-P2-ccomm.h>
 
 ccomm_t ccommands[CCOMM_LEN];
+
 /**
   @brief Atiende el comando NICK
   @param command: El comando recibido
@@ -52,6 +53,10 @@ void cNick(char* command) {
     if(prefix) free(prefix);
 }
 
+/**
+  @brief Atiende el comando RPL_MOTD
+  @param command: El comando recibido
+*/
 void cRplMotd(char* command) {
     char* prefix, *nick, *msg;
     IRCParse_RplMotd (command, &prefix, &nick, &msg);
@@ -62,6 +67,10 @@ void cRplMotd(char* command) {
     if(prefix) free(prefix);
 }
 
+/**
+  @brief Atiende el comando RPL_ENDOFMOTD
+  @param command: El comando recibido
+*/
 void cRplEndOfMotd(char* command) {
     char* prefix, *nick, *msg;
     IRCParse_RplEndOfMotd (command, &prefix, &nick, &msg);
@@ -71,15 +80,24 @@ void cRplEndOfMotd(char* command) {
     if(msg) free(msg);
     if(prefix) free(prefix);
 }
+
+/**
+  @brief Atiende el comando con una accion por defecto
+  @param command: El comando recibido
+*/
 void cdefault(char* command) {
     char *chan = IRCInterface_ActiveChannelName();
     char text[500];
-    sprintf(text, "Comando no implementado %s", command);
+    sprintf(text, "%s", command);
     if(strcmp(chan,"System")==0) 
         IRCInterface_WriteSystemThread(NULL, text);
     else IRCInterface_WriteChannelThread(chan, NULL, text);
 }
 
+/**
+  @brief Atiende el comando RPL_LIST
+  @param command: El comando recibido
+*/
 void cRplList(char* command) {
     char* prefix, *nick, *channel, *visible, *topic;
     char text[500]={0};
@@ -94,6 +112,10 @@ void cRplList(char* command) {
     if(topic) free(topic);
 }
 
+/**
+  @brief Atiende el comando RPL_LISTEND
+  @param command: El comando recibido
+*/
 void cRplListEnd(char* command) {
     char* prefix, *nick, *msg;
     IRCParse_RplListEnd (command, &prefix, &nick, &msg);
@@ -103,6 +125,10 @@ void cRplListEnd(char* command) {
     if(msg) free(msg);
 }
 
+/**
+  @brief Atiende el comando JOIN
+  @param command: El comando recibido
+*/
 void cJoin(char* command) {
     char *prefix, *channel, *key, *msg, *mynick, *myuser, *myrealn, *pass, *myserver;
     char *nick, *user, *host, *server;
@@ -132,6 +158,10 @@ void cJoin(char* command) {
 
 }
 
+/**
+  @brief Atiende el comando PRIVMSG
+  @param command: El comando recibido
+*/
 void cPrivMsg(char* command) {
     char *prefix, *tar, *msg, *nick, *user, *host, *server;
     IRCParse_Privmsg(command, &prefix, &tar, &msg);
@@ -148,7 +178,10 @@ void cPrivMsg(char* command) {
     //TODO liberar memoria
 }
 
-
+/**
+  @brief Atiende el comando RPL_WHOISUSER
+  @param command: El comando recibido
+*/
 void cRplWhoisUser(char* command) {
     char *prefix, *nick, *dest, *name, *host, *realn;
     char text[500];
@@ -165,6 +198,11 @@ void cRplWhoisUser(char* command) {
     if(host) free(host);
     if(realn) free(realn);
 }
+
+/**
+  @brief Atiende el comando RPL_WHOISCHANNELS
+  @param command: El comando recibido
+*/
 void cRplWhoisChannels(char* command) {
     char *prefix, *nick, *dest, *chann;
     char text[500];
@@ -178,6 +216,11 @@ void cRplWhoisChannels(char* command) {
     if(dest) free(dest);
     if(chann) free(chann);
 }
+
+/**
+  @brief Atiende el comando RPL_WHOISOPERATOR
+  @param command: El comando recibido
+*/
 void cRplWhoisOperator(char* command) {
     char *p, *n, *dest, *msg;
     char text[500];
@@ -189,6 +232,11 @@ void cRplWhoisOperator(char* command) {
     if(dest) free(dest);
     if(msg) free(msg);
 }
+
+/**
+  @brief Atiende el comando RPL_WHOISSERVER
+  @param command: El comando recibido
+*/
 void cRplWhoisServer(char* command) {
     char *prefix, *nick, *dest, *server, *sinfo;
     char text[500];
@@ -204,6 +252,10 @@ void cRplWhoisServer(char* command) {
     if(sinfo) free(sinfo);
 }
 
+/**
+  @brief Atiende el comando RPL_WHOISIDLE
+  @param command: El comando recibido
+*/
 void cRplWhoisIdle(char* command) {
     char *prefix, *nick, *dest, *server, *sinfo, *msg;
     char text[500];
@@ -221,6 +273,10 @@ void cRplWhoisIdle(char* command) {
     if(msg) free(msg); 
 }
 
+/**
+  @brief Atiende el comando RPL_ENDOFWHOIS
+  @param command: El comando recibido
+*/
 void cRplEndOfWhois(char* command) {
     char *prefix, *nick, *dest, *msg;
     char text[500];
@@ -234,6 +290,10 @@ void cRplEndOfWhois(char* command) {
     if(msg) free(dest);
 }
 
+/**
+  @brief Atiende el comando TOPIC
+  @param command: El comando recibido
+*/
 void cTopic(char* command) {
     char *prefix, *nick, *topic, *channel;
     char text[500];
@@ -244,6 +304,11 @@ void cTopic(char* command) {
     if(channel) free(channel);
     if(topic) free(topic);
 }
+
+/**
+  @brief Atiende el comandoi PING
+  @param command: El comando recibido
+*/
 void cPing(char* command) {
     char* prefix, *server, *server2, *msg;
     char* comm;
@@ -260,6 +325,10 @@ void cPing(char* command) {
     if(comm) free(comm);
 }
 
+/**
+  @brief Atiende el comando RPL_TOPIC
+  @param command: El comando recibido
+*/
 void cRplTopic(char* command) {
     char *prefix, *nick, *topic, *channel;
     char text[500];
@@ -272,9 +341,18 @@ void cRplTopic(char* command) {
     if(topic) free(topic);
 }
 
+/**
+  @brief Atiende el comando RPL_TOPICWHOTIME
+  @param command: El comando recibido
+*/
 void cRplTopicWhoTime(char* command) {
    //TODO Eloy no parsea, yo no programo 
 }
+
+/**
+  @brief Atiende el comando RPL_WELCOME
+  @param command: El comando recibido
+*/
 void cRplWelcome(char* command) {
     char *prefix, *nick, *msg;
     char text[500];
@@ -286,10 +364,18 @@ void cRplWelcome(char* command) {
     if(msg) free(msg);
 }
 
+/**
+  @brief Atiende el comando RPL_MOTDSTART
+  @param command: El comando recibido
+*/
 void cRplMotdStart(char* command) {
     IRCInterface_WriteSystemThread(NULL, "Inicio del MOTD");
 }
 
+/**
+  @brief Atiende el comando RPL_NAMREPLY
+  @param command: El comando recibido
+*/
 void cRplNamReply(char* command) {
     char *prefix, *nick, *type, *channel, *msg; 
     char *u;
@@ -317,6 +403,10 @@ void cRplNamReply(char* command) {
     //TODO liberar memoria
 }
 
+/**
+  @brief Atiende el comando RPL_WHORPLY
+  @param command: El comando recibido
+*/
 void cRplWhoReply(char* command) {
     char* prefix, *mnick, *channel, *user, *host, *server, *nick, *type, *msg, *realn;
     int hopcount;
@@ -326,6 +416,10 @@ void cRplWhoReply(char* command) {
     
 }
 
+/**
+  @brief Atiende el comando PART
+  @param command: El comando recibido
+*/
 void cPart(char* command) {
     char* prefix, *channel, *msg, *mynick, *myuser, *myrealn, *myserver, *nick, *user, *host, *server;
     char text[500];
@@ -346,6 +440,10 @@ void cPart(char* command) {
     //TODO liberar memoria
 }
 
+/**
+  @brief Atiende el comando RPL_AWAY
+  @param command: El comando recibido
+*/
 void cRplAway(char* command) {
     char* prefix, *nick, *dest, *msg;
     char text[500];
@@ -358,6 +456,10 @@ void cRplAway(char* command) {
     if(msg) free(msg);
 }
 
+/**
+  @brief Atiende el comando RPL_NOWAWAY
+  @param command: El comando recibido
+*/
 void cRplNowAway(char* command) {
     char* prefix, *nick, *msg, *chan;
     IRCParse_RplNowAway (command, &prefix, &nick, &msg); 
@@ -370,6 +472,10 @@ void cRplNowAway(char* command) {
     if(msg) free(msg);
 }
 
+/**
+  @brief Atiende el comando RPL_UNAWAY
+  @param command: El comando recibido
+*/
 void cRplUnAway(char* command) {
     char *chan = IRCInterface_ActiveChannelName();
     if(strcmp(chan,"System")==0) 
@@ -377,6 +483,10 @@ void cRplUnAway(char* command) {
     else IRCInterface_WriteChannelThread(chan, NULL, "Ya no estás marcado como ausente");
 }
 
+/**
+  @brief Atiende el comando RPL_NOTOPIC
+  @param command: El comando recibido
+*/
 void cRplNoTopic(char* command) {
     char* p, *n, *ch, *topic;
     IRCParse_RplNoTopic(command, &p, &n, &ch, &topic);
@@ -390,10 +500,18 @@ void cRplNoTopic(char* command) {
     if(topic) free(topic);
 }
 
+/**
+  @brief Atiende el comando RPL_ENDOFNAMES
+  @param command: El comando recibido
+*/
 void cRplEndOfNames() {
     IRCInterface_WriteSystemThread(NULL, "Fin de la lista de nombres");
 }
 
+/**
+  @brief Atiende el comando KICK
+  @param command: El comando recibido
+*/
 void cKick(char* command) {
     char* prefix, *channel, *msg, *mynick, *myuser, *myrealn, *myserver, *nick, *user, *host, *server, *dest;
     char text[500];
@@ -418,6 +536,10 @@ void cKick(char* command) {
 
 }
 
+/**
+  @brief Atiende el comando ERR_CHANOPPRIVISNEEDED
+  @param command: El comando recibido
+*/
 void cErrChanOpPrivIsNeeded(char* command) {
     char* prefix, *nick, *channel, *msg;
     IRCParse_ErrChanOPrivsNeeded (command, &prefix, &nick, &channel, &msg);
@@ -428,10 +550,18 @@ void cErrChanOpPrivIsNeeded(char* command) {
     if(msg) free(msg);
 }
 
+/**
+  @brief Atiende el comando RPL_ENDOFWHO
+  @param command: El comando recibido
+*/
 void cRplEndOfWho(char* command) {
     IRCInterface_WriteSystemThread(NULL, "Fin del WHO"); 
 }
 
+/**
+  @brief Hilo de recepcion del fichero
+  @param msg: El mensaje recibido 
+*/
 void* rcvThread_file(void * msg ) {
     char *filename=NULL, *hostname_destino=NULL;
     char *prefix, *tar, *nick, *user, *host, *server;
@@ -439,11 +569,16 @@ void* rcvThread_file(void * msg ) {
     int socketd;
     char* buf;
     FILE* f;
+    long acc=0;
     sscanf(msg, "\001FSEND %ms %ms %ms %li %li",&nick, &filename, &hostname_destino, &port, &length);
     buf = calloc((length)*sizeof(char),1);      
     printf("Longitud %lu\n",length);
     if(client_tcpsocket_open(port, &socketd, hostname_destino)<0) puts("Error socket");
-    if(tcpsocket_rcv(socketd, buf, length+1, &port) < 0) puts("Error al recibir el archivo: rcv"); 
+    while (acc-length) {
+        acc+=port;
+        tcpsocket_rcv(socketd, buf, length, &port);
+        if(f) fwrite(buf, 1, length, f);
+    }
     f = fopen(filename, "wb");
     if(f) { 
         fwrite(buf, 1, length, f);
@@ -453,6 +588,10 @@ void* rcvThread_file(void * msg ) {
     pthread_exit(0);
 }
 
+/**
+  @brief Atiende el comando NOTICE
+  @param command: El comando recibido
+*/
 void cNotice(char* command) {
     char *prefix, *tar, *msg, *nick, *user, *host, *server;
     char *filename=NULL, *hostname_destino=NULL;
@@ -481,6 +620,10 @@ void cNotice(char* command) {
     if(tar) free(tar);
 }
 
+/**
+  @brief Atiende el comando NICK
+  @param command: El comando recibido
+*/
 void cErrBadChannelKey(char* command) {
     char* chan=IRCInterface_ActiveChannelName();
     if(strcmp(chan,"System")==0) 
@@ -488,11 +631,19 @@ void cErrBadChannelKey(char* command) {
     else IRCInterface_WriteChannelThread(chan, NULL, "Clave del canal incorrecta");
 }
 
+/**
+  @brief Atiende el comandos de error en la conexion
+  @param command: El comando recibido
+*/
 void cErrConnection(char* command) {
     sleep(1);
     //IRCInterface_ErrorDialog("Hubo algún error con la conexión. Por favor pruebe su conexión al servidor así como pruebe con otros nicks/user/realname si estos fallan");
 }
 
+/**
+  @brief Atiende el comando ERR_NOSUCHNICK
+  @param command: El comando recibido
+*/
 void cErrNoSuchNick(char* command) {
     char *prefix, *nick, *dest, *msg;
     char text[500];
@@ -509,6 +660,10 @@ void cErrNoSuchNick(char* command) {
     if(msg) free(msg);
 }
 
+/**
+  @brief Atiende el comando ERR_NOSUCHCHANNEL
+  @param command: El comando recibido
+*/
 void cErrNoSuchChannel(char* command) {
     char *prefix, *nick, *dest, *msg;
     char text[500];
@@ -525,6 +680,10 @@ void cErrNoSuchChannel(char* command) {
     if(msg) free(msg);
 }
 
+/**
+  @brief Atiende el comando ERR_BANNEDFROMCHANNEL
+  @param command: El comando recibido
+*/
 void cErrBannedFromChannel(char* command) {
     char *p, *n, *c, *msg;
     char *chan;
@@ -542,6 +701,10 @@ void cErrBannedFromChannel(char* command) {
     if(msg) free(msg);
 }
 
+/**
+  @brief Atiende el comando QUIT
+  @param command: El comando recibido
+*/
 void cQuit(char* command) {
     char *prefix, *m;
     char* nick, *user, *host, *server;
@@ -565,6 +728,10 @@ void cQuit(char* command) {
     if(prefix) free(prefix);
 }
 
+/**
+  @brief Atiende el comando MODE
+  @param command: El comando recibido
+*/
 void cMode(char* command) {
     char *prefix, *m;
     char* channeluser, *mode, *user;
@@ -636,6 +803,10 @@ void cMode(char* command) {
     //TODO Liberar
 }
 
+/**
+  @brief Atiende el comando RPL_CHANNELMODEIS
+  @param command: El comando recibido
+*/
 void cRplChannelModeIs(char* command) {
     char* prefix, *nick, *chan, *mode;
     char text[500];
@@ -645,6 +816,10 @@ void cRplChannelModeIs(char* command) {
     IRCInterface_WriteChannelThread(chan, NULL, text);
 
 }
+
+/**
+  @brief Inicializa los comandos
+*/
 void init_ccomm() {
     int i;
     /*  NICK, OPER, MODE, SERVICE, QUIT, SQUIT, JOIN, PART, TOPIC, NAMES, LIST, INVITE, KICK, PRIVMSG, NOTICE, MOTD, LUSERS, VERSION, STATS, LINKS, TIME, CONNECT, TRACE, ADMIN, INFO, SERVLIST, SQUERY, WHO, WHOIS, WHOWAS, KILL, PING, PONG, ERROR, AWAY, REHASH, DIE, RESTART, SUMMON, USERS, WALLOPS, USERHOST, ISON, HELP, RULES, SERVER, ENCAP, CNOTICE, CPRIVMSG, NAMESX, SILENCE, UHNAMES, WATCH, KNOCK, USERIP,SETNAME, ERR_NEEDMOREPARAMS, ERR_ALREADYREGISTRED, ERR_NONICKNAMEGIVEN, ERR_ERRONEUSNICKNAME, ERR_NICKNAMEINUSE, ERR_NICKCOLLISION, ERR_UNAVAILRESOURCE, ERR_RESTRICTED, RPL_YOUREOPER, ERR_NOOPERHOST, ERR_PASSWDMISMATCH, RPL_UMODEIS, ERR_UMODEUNKNOWNFLAG, ERR_USERSDONTMATCH, RPL_YOURESERVICE, RPL_YOURHOST, RPL_MYINFO, ERR_NOPRIVILEGES, ERR_NOSUCHSERVER, RPL_ENDOFWHO, RPL_ENDOFWHOIS, RPL_ENDOFWHOWAS, ERR_WASNOSUCHNICK, RPL_WHOWASUSER, RPL_WHOISUSER, RPL_WHOISCHANNELS, RPL_WHOISOPERATOR, RPL_WHOISSERVER, RPL_WHOISIDLE, RPL_WHOREPLY, ERR_BADMASK, ERR_CANNOTSENDTOCHAN, ERR_NOTEXTTOSEND, ERR_NOTOPLEVEL, ERR_WILDTOPLEVEL, ERR_BADCHANMASK, ERR_BADCHANNELKEY, RPL_BANLIST, ERR_BANNEDFROMCHAN, ERR_CHANNELISFULL, RPL_CHANNELMODEIS, ERR_CHANOPRIVSNEEDED, RPL_ENDOFBANLIST, RPL_ENDOFEXCEPTLIST, RPL_ENDOFINVITELIST, RPL_ENDOFNAMES, RPL_EXCEPTLIST, RPL_INVITELIST, ERR_INVITEONLYCHAN, RPL_INVITING, ERR_KEYSET, RPL_LISTSTART, RPL_LIST, RPL_LISTEND, RPL_NAMREPLY, ERR_NOCHANMODES, ERR_NOSUCHCHANNEL,ERR_NOTONCHANNEL, RPL_NOTOPIC, ERR_TOOMANYCHANNELS, ERR_TOOMANYTARGETS, ERR_UNKNOWNMODE, ERR_USERNOTINCHANNEL, ERR_USERONCHANNEL, RPL_UNIQOPIS, RPL_TOPIC, RPL_ADMINME, RPL_ADMINLOC1, RPL_ADMINLOC2, RPL_ADMINEMAIL, RPL_INFO, RPL_ENDOFLINKS, RPL_ENDOFINFO, RPL_ENDOFMOTD, RPL_ENDOFSTATS, RPL_LINKS, RPL_LUSERCHANNELS, RPL_LUSERCLIENT, RPL_LUSERME, RPL_LUSEROP, RPL_LUSERUNKNOWN, RPL_MOTD, RPL_MOTDSTART, ERR_NOMOTD, RPL_STATSCOMMANDS, RPL_STATSLINKINFO, RPL_STATSOLINE, RPL_STATSUPTIME, RPL_TIME, RPL_TRACECLASS, RPL_TRACECONNECT, RPL_TRACECONNECTING, RPL_TRACEHANDSHAKE, RPL_TRACELINK, RPL_TRACENEWTYPE, RPL_TRACEOPERATOR, RPL_TRACESERVER, RPL_TRACESERVICE, RPL_TRACEUSER, RPL_TRACEUNKNOWN, RPL_TRACELOG, RPL_TRACEEND, RPL_VERSION, ERR_NOSUCHSERVICE, RPL_SERVLIST, RPL_SERVLISTEND, ERR_CANTKILLSERVER, ERR_NOORIGIN, RPL_ENDOFUSERS, ERR_FILEERROR, RPL_ISON, ERR_NOLOGIN, RPL_NOUSERS, RPL_NOWAWAY, RPL_REHASHING, ERR_SUMMONDISABLED, RPL_SUMMONING, RPL_UNAWAY, RPL_USERHOST, RPL_USERS, ERR_USERSDISABLED, RPL_USERSSTART, RPL_AWAY, ERR_NOSUCHNICK, RPL_WELCOME, RPL_CREATED, RPL_BOUNCE, RPL_TRYAGAIN, ERR_UNKNOWNCOMMAND, ERR_NOADMININFO, ERR_NOTREGISTERED, ERR_NOPERMFORHOST, ERR_YOUREBANNEDCREEP, ERR_YOUWILLBEBANNED, ERR_BANLISTFULL, ERR_UNIQOPPRIVSNEEDED, ERR_NORECIPIENT, ERR_TOOMANYMATCHES, RPL_YOURID, RPL_CREATIONTIME, RPL_LOCALUSERS, y RPL_GLOBALUSERS,RPL_TOPICWHOTIME, RPL_CHANNELURL. */

@@ -1,3 +1,10 @@
+/**
+  @file xchat2.c
+  @brief Programa principal del cliente IRC
+  @author Sergio Fuentes  <sergio.fuentesd@estudiante.uam.es>
+  @author Daniel Perdices <daniel.perdices@estudiante.uam.es>
+  @date 2016/04/19
+  */
 #include <redes2/ircxchat.h>
 #include <G-2301-01-P2-client.h>
 #include <G-2301-01-P2-ucomm.h>
@@ -16,6 +23,8 @@
 #define DOWN pthread_mutex_lock
 #define UP pthread_mutex_unlock
 #define TOKEN 1
+
+/* Variables globales */
 int socketd_client;
 int socket_audio;
 int flag=1;
@@ -30,95 +39,99 @@ char buffsnd[2000];
 char host[NI_MAXHOST];
 pthread_t t;
 
+
+/**
+  @brief Devuelve el nick del usuario. Requiere liberar memoria
+  @return el nick
+*/
 char* get_unick() {
-  char *mynick, *myuser, *myrealn, *pass, *myserver;
-  char *nick, *user, *host, *server;
-  int port, ssl;
-  IRCInterface_GetMyUserInfo(&mynick, &myuser, &myrealn, NULL, &myserver, &port, &ssl);
-  if(myuser) free(myuser);
-  if(myrealn) free(myrealn);
-  if(myserver) free(myserver);
-  return mynick;
+    char *mynick, *myuser, *myrealn, *pass, *myserver;
+    char *nick, *user, *host, *server;
+    int port, ssl;
+    IRCInterface_GetMyUserInfo(&mynick, &myuser, &myrealn, NULL, &myserver, &port, &ssl);
+    if(myuser) free(myuser);
+    if(myrealn) free(myrealn);
+    if(myserver) free(myserver);
+    return mynick;
 }
 
+/**
+  @brief Configura el host destino de la comunicacion de audio
+  @param c: IP destino de la comunicacion
+*/
 void set_audio_host(char* c) {
-  strcpy(host_dest, c);
+    strcpy(host_dest, c);
 }
 
+/**
+  @brief Configura el puerto destino de la comunicacion de audio
+  @param c: puerto destino
+*/
 void set_audio_port(unsigned long p) {
-  port_dest = p;
+    port_dest = p;
 }
 
+/**
+  @brief Desbloquea el audio
+*/
 void unlock_audio() {
-  UP(&maudio2);
+    UP(&maudio2);
 }
+
+/**
+  @brief Devuelve la IP propia de la interfaz
+  @return el host
+*/
 char* get_uhost() {
-  FILE *f;
-  char line[100] , *p , *c;
+    FILE *f;
+    char line[100] , *p , *c;
+    int fm = AF_INET;
+    struct ifaddrs *ifaddr, *ifa;
+    int family , s;
 
-  f = fopen("/proc/net/route" , "r");
+    f = fopen("/proc/net/route" , "r");
 
-  while(fgets(line , 100 , f))
-  {
-    p = strtok(line , " \t");
-    c = strtok(NULL , " \t");
+    while(fgets(line , 100 , f)){
+        p = strtok(line , " \t");
+        c = strtok(NULL , " \t");
 
-    if(p!=NULL && c!=NULL)
-    {
-      if(strcmp(c , "00000000") == 0)
-      {
-        printf("Default interface is : %s \n" , p);
-        break;
-      }
-    }
-  }
-
-  //which family do we require , AF_INET or AF_INET6
-  int fm = AF_INET;
-  struct ifaddrs *ifaddr, *ifa;
-  int family , s;
-
-  if (getifaddrs(&ifaddr) == -1) 
-  {
-    perror("getifaddrs");
-    exit(EXIT_FAILURE);
-  }
-
-  //Walk through linked list, maintaining head pointer so we can free list later
-  for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) 
-  {
-    if (ifa->ifa_addr == NULL)
-    {
-      continue;
-    }
-
-    family = ifa->ifa_addr->sa_family;
-
-    if(strcmp( ifa->ifa_name , p) == 0)
-    {
-      if (family == fm) 
-      {
-        s = getnameinfo( ifa->ifa_addr, (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6) , host , NI_MAXHOST , NULL , 0 , NI_NUMERICHOST);
-
-        if (s != 0) 
-        {
-          printf("getnameinfo() failed: %s\n", gai_strerror(s));
-          exit(EXIT_FAILURE);
+        if(p!=NULL && c!=NULL){
+            if(strcmp(c , "00000000") == 0){
+                printf("Default interface is : %s \n" , p);
+                break;
+            }
         }
-
-        printf("address: %s", host);
-        return host;
-      }
-      printf("\n");
     }
-  }
-
-  freeifaddrs(ifaddr);
-
-  return 0;
+    if (getifaddrs(&ifaddr) == -1) {
+        perror("getifaddrs");
+    }
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL){
+            continue;
+        }
+        family = ifa->ifa_addr->sa_family;
+        if(strcmp( ifa->ifa_name , p) == 0) {
+            if (family == fm) {
+                s = getnameinfo( ifa->ifa_addr, (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6) , host , NI_MAXHOST , NULL , 0 , NI_NUMERICHOST);
+                if (s != 0) {
+                    printf("getnameinfo() failed: %s\n", gai_strerror(s));
+                }
+                printf("address: %s", host);
+                return host;
+            }
+            printf("\n");
+        }
+    }
+    freeifaddrs(ifaddr);
+    return 0;
 }
 
 
+/**
+  @brief Envia el comando del cliente. Es segura para concurrencia
+  @param msg El mensaje IRC
+  @return Ningun valor concreto
+*/
 int _client_socketsnd(char * msg) {
     DOWN(&mutexsnd);
     tcpsocket_snd(socketd_client, msg, strlen(msg));
@@ -126,6 +139,12 @@ int _client_socketsnd(char * msg) {
     syslog(LOG_INFO, "Sending: %s", msg);
 }
 
+/**
+  @brief Recibe el comando en msg
+  @param msg El mensaje IRC
+  @param size El tamaño maximo de recepcion
+  @return Ningun valor concreto
+*/
 int _client_socketrcv(char* msg, size_t size) {
     size_t len=0;
     DOWN(&mutexrcv);
@@ -134,25 +153,48 @@ int _client_socketrcv(char* msg, size_t size) {
     //syslog(LOG_INFO, "Receiving: %s", msg);
 }
 
+/**
+  @brief Envia el comando del cliente. Es segura para concurrencia
+  @param msg El mensaje IRC
+  @return Ningun valor concreto
+*/
 int client_socketsnd(char *msg) {
     if(strlen(msg) > 2) IRCInterface_PlaneRegisterOutMessage(msg);
     _client_socketsnd(msg);
 }
 
+/**
+  @brief Envia el comando del cliente. Es segura para concurrencia y es la version para ser llamada desde hilos
+  @param msg El mensaje IRC
+  @return Ningun valor concreto
+*/
 int client_socketsnd_thread(char *msg) {
     if(strlen(msg) > 2) IRCInterface_PlaneRegisterOutMessageThread(msg);
     _client_socketsnd(msg);
 }
 
+/**
+  @brief Recibe el comando en msg
+  @param msg El mensaje IRC
+  @param size El tamaño maximo de recepcion
+  @return Ningun valor concreto
+*/
 int client_socketrcv(char* msg, size_t size) {
     _client_socketrcv(msg, size); 
     msg[size-1]=0;
     if(strlen(msg) > 2) IRCInterface_PlaneRegisterInMessage (msg);
 }
+
+/**
+  @brief Recibe el comando en msg
+  @param msg El mensaje IRC
+  @param size El tamaño maximo de recepcion
+  @return Ningun valor concreto
+*/
 int client_socketrcv_thread(char* msg, size_t size) {
     _client_socketrcv(msg, size);
     msg[size-1]=0;
-    printf("rcv[%d]: %s", strlen(msg), msg);
+    printf("rcv[%d]: %s", (int) strlen(msg), msg);
 }
 /** 
  * \defgroup IRCInterfaceCallbacks Callbaks del interfaz
@@ -196,14 +238,14 @@ int client_socketrcv_thread(char* msg, size_t size) {
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
+ */
 
 void IRCInterface_ActivateProtectTopic(char * channel)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "+t", NULL);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "+t", NULL);
+    client_socketsnd(comm);
+    free(comm);
 }
 
 /**
@@ -232,14 +274,14 @@ void IRCInterface_ActivateProtectTopic(char * channel)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
+ */
 
 void IRCInterface_DeactivateProtectTopic(char * channel)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "-t", NULL);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "-t", NULL);
+    client_socketsnd(comm);
+    free(comm);
 }
 
 /**
@@ -268,14 +310,14 @@ void IRCInterface_DeactivateProtectTopic(char * channel)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_ActivateExternalMessages(char * channel)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "+n", NULL);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "+n", NULL);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -305,14 +347,14 @@ void IRCInterface_ActivateExternalMessages(char * channel)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_DeactivateExternalMessages(char * channel)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "-n", NULL);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "-n", NULL);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -342,14 +384,14 @@ void IRCInterface_DeactivateExternalMessages(char * channel)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_ActivateSecret(char * channel)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "+s", NULL);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "+s", NULL);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -379,14 +421,14 @@ void IRCInterface_ActivateSecret(char * channel)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_DeactivateSecret(char * channel)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "+s", NULL);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "+s", NULL);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -416,14 +458,14 @@ void IRCInterface_DeactivateSecret(char * channel)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_ActivateInvite(char * channel)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "+i", NULL);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "+i", NULL);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -453,14 +495,14 @@ void IRCInterface_ActivateInvite(char * channel)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_DeactivateInvite(char * channel)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "-i", NULL);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "-i", NULL);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -490,14 +532,14 @@ void IRCInterface_DeactivateInvite(char * channel)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_ActivatePrivate(char * channel)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "+p", NULL);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "+p", NULL);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -527,14 +569,14 @@ void IRCInterface_ActivatePrivate(char * channel)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_DeactivatePrivate(char * channel)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "-p", NULL);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "-p", NULL);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -564,14 +606,14 @@ void IRCInterface_DeactivatePrivate(char * channel)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_ActivateModerated(char * channel)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "+m", NULL);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "+m", NULL);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -601,14 +643,14 @@ void IRCInterface_ActivateModerated(char * channel)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_DeactivateModerated(char * channel)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "-m", NULL);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "-m", NULL);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -640,14 +682,14 @@ void IRCInterface_DeactivateModerated(char * channel)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_ActivateChannelKey(char * channel, char *key)
 {  
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "+k", key);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "+k", key);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -677,14 +719,14 @@ void IRCInterface_ActivateChannelKey(char * channel, char *key)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_DeactivateChannelKey(char * channel)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "-k", NULL);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "-k", NULL);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -716,16 +758,16 @@ void IRCInterface_DeactivateChannelKey(char * channel)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_ActivateNicksLimit(char * channel, int limit)
 {
-  char *comm;
-  char l[200];
-  sprintf(l, "%s", limit);
-  IRCMsg_Mode (&comm, NULL, channel, "+l", l);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    char l[200];
+    sprintf(l, "%d", limit);
+    IRCMsg_Mode (&comm, NULL, channel, "+l", l);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -755,14 +797,13 @@ void IRCInterface_ActivateNicksLimit(char * channel, int limit)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
 void IRCInterface_DeactivateNicksLimit(char * channel)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "-l", NULL);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "-l", NULL);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -793,14 +834,14 @@ void IRCInterface_DeactivateNicksLimit(char * channel)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_NewTopicEnter(char *topicdata)
 {
-  char *comm;
-  IRCMsg_Topic (&comm, NULL, IRCInterface_ActiveChannelName(), topicdata);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Topic (&comm, NULL, IRCInterface_ActiveChannelName(), topicdata);
+    client_socketsnd(comm);
+    free(comm);
 
 }
 
@@ -832,8 +873,8 @@ void IRCInterface_NewTopicEnter(char *topicdata)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_NewCommandText(char *command)
 {
     long ret;
@@ -882,16 +923,14 @@ void IRCInterface_NewCommandText(char *command)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_GiveOp(char *channel, char *nick)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "+o", nick);
-  client_socketsnd(comm);
-  free(comm);
-
-
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "+o", nick);
+    client_socketsnd(comm);
+    free(comm);
 }
 
 /**
@@ -921,16 +960,14 @@ void IRCInterface_GiveOp(char *channel, char *nick)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_TakeOp(char *channel, char *nick)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "-o", nick);
-  client_socketsnd(comm);
-  free(comm);
-
-
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "-o", nick);
+    client_socketsnd(comm);
+    free(comm);
 }
 
 /**
@@ -960,16 +997,14 @@ void IRCInterface_TakeOp(char *channel, char *nick)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_GiveVoice(char *channel, char *nick)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "+v", nick);
-  client_socketsnd(comm);
-  free(comm);
-
-
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "+v", nick);
+    client_socketsnd(comm);
+    free(comm);
 }
 
 /**
@@ -999,14 +1034,14 @@ void IRCInterface_GiveVoice(char *channel, char *nick)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_TakeVoice(char *channel, char *nick)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "-v", nick);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "-v", nick);
+    client_socketsnd(comm);
+    free(comm);
 
 
 }
@@ -1038,14 +1073,14 @@ void IRCInterface_TakeVoice(char *channel, char *nick)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 void IRCInterface_BanNick(char *channel, char *nick)
 {
-  char *comm;
-  IRCMsg_Mode (&comm, NULL, channel, "+b", nick);
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Mode (&comm, NULL, channel, "+b", nick);
+    client_socketsnd(comm);
+    free(comm);
 
 
 }
@@ -1077,35 +1112,40 @@ void IRCInterface_BanNick(char *channel, char *nick)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
 void IRCInterface_KickNick(char *channel, char *nick)
 {
-  char *comm;
-  IRCMsg_Kick(&comm, NULL, channel, nick, "Kicked");
-  client_socketsnd(comm);
-  free(comm);
+    char *comm;
+    IRCMsg_Kick(&comm, NULL, channel, nick, "Kicked");
+    client_socketsnd(comm);
+    free(comm);
 }
 
 typedef struct {
-  int sockfd;
-  char* data;
-  unsigned long l;
+    int sockfd;
+    char* data;
+    unsigned long l;
 } _thread_file;
 
+
+/**
+  @brief El hilo del envio de fichero
+  @param d: argumentos del hilo
+  @return NULL
+*/
 void* fileThread(void* d) {
-	tcpsocket_args args={0};
-  _thread_file* s = (_thread_file*) d;
+    tcpsocket_args args={0};
+    _thread_file* s = (_thread_file*) d;
 
-  printf("Waiting for connection\n");
-  tcpsocket_accept(s->sockfd,&args);
-  printf("Sending\n");
-  tcpsocket_snd(args.acceptd, s->data, s->l);
+    printf("Waiting for connection\n");
+    tcpsocket_accept(s->sockfd,&args);
+    printf("Sending\n");
+    tcpsocket_snd(args.acceptd, s->data, s->l);
 
-  printf("End of connection\n");
-  close(s->sockfd);
-  free(s);
-  return NULL;
+    printf("End of connection\n");
+    close(s->sockfd);
+    free(s);
+    return NULL;
 }
 
 /**
@@ -1137,35 +1177,77 @@ void* fileThread(void* d) {
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
-
-
+ */
 boolean IRCInterface_SendFile(char *filename, char *nick, char *data, long unsigned int length)
 {
-  char comm[512];
-  pthread_t t2;
-  struct sockaddr_in my_addr;
-  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  listen(sockfd, 1); // se pone a la escucha el socket, máximo 1 cliente
-  socklen_t slen = sizeof(my_addr);
-  getsockname(sockfd, (struct sockaddr*)&my_addr, &slen);
-  printf("puerto asignado: %d\n", ntohs(my_addr.sin_port));
+    char comm[512];
+    pthread_t t2;
+    struct sockaddr_in my_addr;
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    listen(sockfd, 1); // se pone a la escucha el socket, máximo 1 cliente
+    socklen_t slen = sizeof(my_addr);
+    getsockname(sockfd, (struct sockaddr*)&my_addr, &slen);
+    printf("puerto asignado: %d\n", ntohs(my_addr.sin_port));
 
-  _thread_file* news = malloc(sizeof(_thread_file));
-  news->sockfd = sockfd;
-  news->data = data;
-  news->l = length;
-  pthread_create(&t2, NULL, fileThread, (void*) news);
-  
+    _thread_file* news = malloc(sizeof(_thread_file));
+    news->sockfd = sockfd;
+    news->data = data;
+    news->l = length;
+    pthread_create(&t2, NULL, fileThread, (void*) news);
 
 
-  sprintf(comm, "NOTICE %s :%cFSEND %s %s %s %lu %lu\r\n", nick, TOKEN, get_unick(), filename, get_uhost(), ntohs(my_addr.sin_port), length);
-  printf("%s", comm);
-  client_socketsnd(comm);
 
-  return TRUE;
+    sprintf(comm, "NOTICE %s :%cFSEND %s %s %s %d %lu\r\n", nick, TOKEN, get_unick(), filename, get_uhost(), ntohs(my_addr.sin_port), length);
+    printf("%s", comm);
+    client_socketsnd(comm);
 
- }
+    return TRUE;
+
+}
+
+
+/**
+  @brief Graba y envia audio para la funcionalidad de chat de voz
+  @param d: Nada
+  @return NULL
+*/
+void* audiosnd_t(void* d) {
+    rtpargs_t rargs;
+    rargs.pt = IRCSound_RecordFormat(PA_SAMPLE_S16BE, 2);
+
+    DOWN(&maudio1);
+    DOWN(&maudio2);
+    UP(&maudio2);
+    UP(&maudio1);
+    while(flag) {
+        //printf("Sending %s %p\n", host_dest, port_dest);
+        rtp_sndpkg(socket_audio, host_dest, port_dest, rargs, buffsnd, 900);
+        IRCSound_RecordSound(buffsnd, 900); //8000KB/s * 20 ms = 160B
+    }
+}
+
+/**
+  @brief Recibe y reproduce audio para la funcionalidad de chat de voz
+  @param d: Nada
+  @return NULL
+*/
+void* audiorcv_t(void* d) {
+    rtpargs_t rargs;
+    size_t len;
+
+    IRCSound_PlayFormat(PA_SAMPLE_S16BE,2);
+    DOWN(&maudio1);
+    DOWN(&maudio2);
+    UP(&maudio2);
+    UP(&maudio1);
+    while(flag) {
+        rtp_rcvpkg(socket_audio, host_dest, port_dest, &rargs, buffrcv, &len);
+        //printf("Received %s %p\n", host_dest, port_dest);
+        IRCSound_PlaySound(buffrcv, len); //8000KB/s * 20 ms = 160B
+    }
+}
+
+
 /**
  * \ingroup IRCInterfaceCallbacks
  *
@@ -1195,61 +1277,31 @@ boolean IRCInterface_SendFile(char *filename, char *nick, char *data, long unsig
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
-
-void* audiosnd_t(void* d) {
-  rtpargs_t rargs;
-  rargs.pt = IRCSound_RecordFormat(PA_SAMPLE_S16BE, 2);
-
-    DOWN(&maudio1);
-    DOWN(&maudio2);
-  while(flag) {
-    //printf("Sending %s %p\n", host_dest, port_dest);
-    rtp_sndpkg(socket_audio, host_dest, port_dest, rargs, buffsnd, 900);
-    IRCSound_RecordSound(buffsnd, 900); //8000KB/s * 20 ms = 160B
-  }
-}
-
-void* audiorcv_t(void* d) {
-  rtpargs_t rargs;
-  size_t len;
-
-  IRCSound_PlayFormat(PA_SAMPLE_S16BE,2);
-    DOWN(&maudio1);
-    DOWN(&maudio2);
-  while(flag) {
-    rtp_rcvpkg(socket_audio, host_dest, port_dest, &rargs, buffrcv, &len);
-    //printf("Received %s %p\n", host_dest, port_dest);
-    IRCSound_PlaySound(buffrcv, len); //8000KB/s * 20 ms = 160B
-  }
-}
-
-
+ */
 boolean IRCInterface_StartAudioChat(char *nick)
 {
-  struct sockaddr_in add;
-  struct sockaddr_in my_addr;
-  char comm[512];
-  socklen_t slen = sizeof(my_addr);
-  socket_audio = socket(AF_INET, SOCK_DGRAM, 0);
+    struct sockaddr_in add;
+    struct sockaddr_in my_addr;
+    char comm[512];
+    socklen_t slen = sizeof(my_addr);
+    socket_audio = socket(AF_INET, SOCK_DGRAM, 0);
 
-  add.sin_family = AF_INET;
-  add.sin_port = 0;
-  add.sin_addr.s_addr = INADDR_ANY;
-  bzero(&add.sin_zero, 8);
+    add.sin_family = AF_INET;
+    add.sin_port = 0;
+    add.sin_addr.s_addr = INADDR_ANY;
+    bzero(&add.sin_zero, 8);
 
-  bind(socket_audio, (struct sockaddr *)&add, sizeof(add));
-  getsockname(socket_audio, (struct sockaddr*)&my_addr, &slen);
-  printf("puerto asignado: %d\n", htons(my_addr.sin_port));
+    bind(socket_audio, (struct sockaddr *)&add, sizeof(add));
+    getsockname(socket_audio, (struct sockaddr*)&my_addr, &slen);
+    printf("puerto asignado: %d\n", htons(my_addr.sin_port));
 
-  sprintf(comm, "NOTICE %s :%cAUDIOCHAT %s %s %lu\r\n", nick, TOKEN, get_unick(), get_uhost(), htons(my_addr.sin_port)); 
-      
-  client_socketsnd(comm);
-  
-  UP(&maudio1);
+    sprintf(comm, "NOTICE %s :%cAUDIOCHAT %s %s %d\r\n", nick, TOKEN, get_unick(), get_uhost(), htons(my_addr.sin_port)); 
 
-  return TRUE;
+    client_socketsnd(comm);
+
+    UP(&maudio1);
+
+    return TRUE;
 }
 
 /**
@@ -1280,11 +1332,11 @@ boolean IRCInterface_StartAudioChat(char *nick)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 boolean IRCInterface_StopAudioChat(char *nick)
 {
-	return TRUE;
+    return TRUE;
 }
 
 /**
@@ -1315,12 +1367,11 @@ boolean IRCInterface_StopAudioChat(char *nick)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
 boolean IRCInterface_ExitAudioChat(char *nick)
 {
-  flag=0;
-	return TRUE;
+    flag=0;
+    return TRUE;
 }
 
 /**
@@ -1349,17 +1400,17 @@ boolean IRCInterface_ExitAudioChat(char *nick)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 boolean IRCInterface_DisconnectServer(char *server, int port)
 {
-  client_socketsnd("QUIT\r\n");
+    client_socketsnd("QUIT\r\n");
 
 
-  DOWN(&mutexrcv);
-  DOWN(&mutexsnd);
-  tcpsocket_close(socketd_client);
-	return TRUE;
+    DOWN(&mutexrcv);
+    DOWN(&mutexsnd);
+    tcpsocket_close(socketd_client);
+    return TRUE;
 }
 
 /**
@@ -1391,8 +1442,8 @@ boolean IRCInterface_DisconnectServer(char *server, int port)
  * Eloy Anguiano (eloy.anguiano@uam.es)
  *
  *<hr>
-*/
- 
+ */
+
 long IRCInterface_Connect(char *nick, char *user, char *realname, char *password, char *server, int port, boolean ssl)
 {
     char* comm;
@@ -1412,19 +1463,24 @@ long IRCInterface_Connect(char *nick, char *user, char *realname, char *password
         client_socketsnd(comm); 
         free(comm);
     }
-    
+
     IRCMsg_Nick(&comm, NULL, nick, NULL);
     client_socketsnd(comm); 
     free(comm);
-    
+
     IRCMsg_User(&comm, NULL, user, "1", realname);
     client_socketsnd(comm); 
     free(comm);
 
     UP(&mutexrcv);
-	return IRC_OK;
+    return IRC_OK;
 }
 
+/**
+  @brief Recibe y atiende comandos IRC
+  @param d: Nada
+  @return NULL
+*/
 void* rcv_thread(void *d) {
     char *msg, *comm, *next, *command;
     long ret;
@@ -1473,35 +1529,40 @@ void* rcv_thread(void *d) {
 /***************************************************************************************************/
 
 
-
+/**
+  @brief: Funcion principal del programa 
+  @param argc: numero de argumentos
+  @param argv: parametros
+  @return 0
+*/
 int main (int argc, char *argv[])
 {
-  pthread_t t, tt;
+    pthread_t t, tt;
 
-  IRCSound_OpenRecord();
-  IRCSound_OpenPlay();
-  pthread_mutex_init(&mutexsnd, NULL);
-  pthread_mutex_init(&mutexrcv, NULL);
-  pthread_mutex_init(&maudio1, NULL);
-  pthread_mutex_init(&maudio2, NULL);
-  DOWN(&mutexrcv);
-  DOWN(&mutexsnd);
+    IRCSound_OpenRecord();
+    IRCSound_OpenPlay();
+    pthread_mutex_init(&mutexsnd, NULL);
+    pthread_mutex_init(&mutexrcv, NULL);
+    pthread_mutex_init(&maudio1, NULL);
+    pthread_mutex_init(&maudio2, NULL);
+    DOWN(&mutexrcv);
+    DOWN(&mutexsnd);
 
-  DOWN(&maudio1);
-  DOWN(&maudio2);
+    DOWN(&maudio1);
+    DOWN(&maudio2);
 
-  init_ucomm();
-  init_ccomm();
+    init_ucomm();
+    init_ccomm();
 
 
-  pthread_create(&t, NULL, audiosnd_t, NULL);
-  pthread_create(&t, NULL, audiorcv_t, NULL);
+    pthread_create(&t, NULL, audiosnd_t, NULL);
+    pthread_create(&t, NULL, audiorcv_t, NULL);
 
-  /* La función IRCInterface_Run debe ser llamada al final      */
-  /* del main y es la que activa el interfaz gráfico quedándose */
-  /* en esta función hasta que se pulsa alguna salida del       */
-  /* interfaz gráfico.                                          */
-  IRCInterface_Run(argc, argv);
+    /* La función IRCInterface_Run debe ser llamada al final      */
+    /* del main y es la que activa el interfaz gráfico quedándose */
+    /* en esta función hasta que se pulsa alguna salida del       */
+    /* interfaz gráfico.                                          */
+    IRCInterface_Run(argc, argv);
 
-  return 0;
+    return 0;
 }
