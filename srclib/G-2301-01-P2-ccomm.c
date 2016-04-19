@@ -574,12 +574,11 @@ void* rcvThread_file(void * msg ) {
     buf = calloc((length)*sizeof(char),1);      
     printf("Longitud %lu\n",length);
     if(client_tcpsocket_open(port, &socketd, hostname_destino)<0) puts("Error socket");
-    while (acc-length) {
+    while (acc<length) {
+        tcpsocket_rcv(socketd, buf+acc, length-acc, &port);
         acc+=port;
-        tcpsocket_rcv(socketd, buf, length, &port);
-        if(f) fwrite(buf, 1, length, f);
     }
-    f = fopen(filename, "wb");
+    f = fopen(filename, "w");
     if(f) { 
         fwrite(buf, 1, length, f);
 	fclose(f);

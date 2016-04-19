@@ -28,6 +28,9 @@
 int socketd_client;
 int socket_audio;
 int flag=1;
+int connected=0;
+int timer=3;
+
 long port_dest;
 char host_dest[NI_MAXHOST];
 pthread_mutex_t mutexsnd;
@@ -426,7 +429,7 @@ void IRCInterface_ActivateSecret(char * channel)
 void IRCInterface_DeactivateSecret(char * channel)
 {
     char *comm;
-    IRCMsg_Mode (&comm, NULL, channel, "+s", NULL);
+    IRCMsg_Mode (&comm, NULL, channel, "-s", NULL);
     client_socketsnd(comm);
     free(comm);
 
@@ -1473,6 +1476,7 @@ long IRCInterface_Connect(char *nick, char *user, char *realname, char *password
     free(comm);
 
     UP(&mutexrcv);
+    connected = 1;
     return IRC_OK;
 }
 
@@ -1505,6 +1509,19 @@ void* rcv_thread(void *d) {
             if(command!=NULL) free(command); //??
             next = IRC_UnPipelineCommands(NULL, &command, next);
         } while(next!=NULL);
+    }
+}
+
+void* timeout_t(void * a) {
+    while(1) {
+        if(connected) {
+            if(timer==1) {}//DISCONNECT
+            if(timer==2) {
+                client_socketsnd("PING LAG1234567\r\n"); 
+            }
+            timer--;
+        }
+        sleep(10);
     }
 }
 /***************************************************************************************************/
@@ -1557,6 +1574,7 @@ int main (int argc, char *argv[])
 
     pthread_create(&t, NULL, audiosnd_t, NULL);
     pthread_create(&t, NULL, audiorcv_t, NULL);
+    pthread_create(&t, NULL, timeout_t, NULL);
 
     /* La función IRCInterface_Run debe ser llamada al final      */
     /* del main y es la que activa el interfaz gráfico quedándose */
