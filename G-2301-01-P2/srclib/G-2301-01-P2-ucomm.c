@@ -201,7 +201,15 @@ void uKick(char* command) {
   @param command: El comando recibido
   */
 void uNotice(char* command) {
-    IRCInterface_WriteSystemThread("AVISO", "Los mensajes NOTICE se utilizan muchas veces para intercambiar información de administración. Se desaconseja su uso como mensajes de proposito general, para ello se dispone de PRIVMSG o MSG (llama a PRIVMSG), aunque se pueden usar con este propósito si el usuario así lo decide.");
+    char *msg, * tar;
+    char* comm;
+    IRCUserParse_Notice(command, &tar, &msg);
+    IRCInterface_WriteSystem("AVISO", "Los mensajes NOTICE se utilizan muchas veces para intercambiar información de administración. Se desaconseja su uso como mensajes de proposito general, para ello se dispone de PRIVMSG o MSG (llama a PRIVMSG), aunque se pueden usar con este propósito si el usuario así lo decide.");
+    IRCMsg_Notice(&comm, NULL, tar?tar:IRCInterface_ActiveChannelName(), msg);
+    client_socketsnd(comm);
+    if(msg) free(msg);
+    if(comm) free(comm);
+
 }
 
 void uMode(char* command) {
@@ -348,5 +356,6 @@ void init_ucomm() {
     ucommands[UQUIT] = uQuit;
     ucommands[UCYCLE] = uCycle;
     ucommands[UMOTD] = uMotd;
+    ucommands[UNOTICE] = uNotice;
     ucommands[UPARTALL] = uPartAll;
 }

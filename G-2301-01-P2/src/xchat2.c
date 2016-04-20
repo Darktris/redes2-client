@@ -543,6 +543,7 @@ void IRCInterface_DeactivateInvite(char * channel)
 void IRCInterface_ActivatePrivate(char * channel)
 {
     char *comm;
+    IRCInterface_WriteChannel(channel, "AVISO", "En algunos servidores el modo +p descrito en el RFC1459 se considera obsoleto y puede que no sea detectado");
     IRCMsg_Mode (&comm, NULL, channel, "+p", NULL);
     client_socketsnd(comm);
     free(comm);
@@ -1545,7 +1546,7 @@ void* timeout_t(void * a) {
             }
             timer--;
         }
-        sleep(10);
+        sleep(20);
     }
 }
 
