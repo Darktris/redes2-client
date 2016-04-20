@@ -28,8 +28,15 @@ OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 _BIN = xchat2 soundtest
 BIN = $(patsubst %,$(BDIR)/%,$(_BIN))
 
-all: $(BIN)
+all: $(BIN) readme printopt
 
+printopt:
+	@echo ">>>> Opciones del makefile <<<<"
+	@echo "'make' para construir"
+	@echo "'make run' para ejecutar el programa"
+	@echo "'make clean' para limpiar el entorno"
+	@echo "'make doc' para generar la documentacion"
+	@echo "'make compress' para comprimir la práctica"
 $(LIB): $(LOBJ)
 	$(AR) rcv $@ $^
 
@@ -49,8 +56,8 @@ compress: clean doc
 	mv ../$(TAR_FILE) $(TAR_FILE)
 
 doc: clean 
-	export MANPATH=$MANPATH:$(pwd)/man
 	doxygen
+	@cat Readme
 
 run: xchat2
 	./xchat2	
@@ -58,6 +65,8 @@ run: xchat2
 log: 
 	tail -F /var/log/syslog | grep irc
 
+readme: 
+	@cat Readme
 .PHONY: clean
 clean:
 	@rm -frv $(BIN) $(LIB) $(OBJ) $(LOBJ) 
