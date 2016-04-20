@@ -2,12 +2,14 @@
 .ad l
 .nh
 .SH NAME
-srclib/G-2301-01-P1-tcp.c \- Libreria de manejo de sockets TCP\&.  
+srclib/G-2301-01-P1-tcp.c \- 
+.PP
+Libreria de manejo de sockets TCP\&.  
 
 .SH SYNOPSIS
 .br
 .PP
-\fC#include 'G\-2301\-01\-P1\-tcp\&.h'\fP
+\fC#include 'G-2301-01-P1-tcp\&.h'\fP
 .br
 \fC#include <stdio\&.h>\fP
 .br
@@ -74,10 +76,10 @@ Daniel Perdices daniel.perdices@estudiante.uam.es
 .PP
 
 .PP
-Definición en el archivo \fBG\-2301\-01\-P1\-tcp\&.c\fP\&.
+Definición en el archivo \fBG-2301-01-P1-tcp\&.c\fP\&.
 .SH "Documentación de las funciones"
 .PP 
-.SS "int client_tcpsocket_open (uint16_t port, int * socketd, char * hostname)"
+.SS "int client_tcpsocket_open (uint16_tport, int *socketd, char *hostname)"
 
 .PP
 Abre un socket TCP para cliente\&. 
@@ -96,8 +98,8 @@ TCPOK si todo fue correcto TCPERR_ARGS/SOCKET/BIND/LISTEN en caso de error con e
 .PP
 
 .PP
-Definición en la línea 68 del archivo G\-2301\-01\-P1\-tcp\&.c\&.
-.SS "int server_tcpsocket_open (uint16_t port, int * socketd)"
+Definición en la línea 68 del archivo G-2301-01-P1-tcp\&.c\&.
+.SS "int server_tcpsocket_open (uint16_tport, int *socketd)"
 
 .PP
 Abre un socket TCP para servidor\&. 
@@ -116,8 +118,8 @@ TCPOK si todo funciono correctamente TCPERR_ARGS/SOCKET/BIND/LISTEN en caso de e
 .PP
 
 .PP
-Definición en la línea 25 del archivo G\-2301\-01\-P1\-tcp\&.c\&.
-.SS "int tcpsocket_accept (int socketd, tcpsocket_args * args)"
+Definición en la línea 25 del archivo G-2301-01-P1-tcp\&.c\&.
+.SS "int tcpsocket_accept (intsocketd, tcpsocket_args *args)"
 
 .PP
 Acepta una conexion a socket TCP\&. 
@@ -136,8 +138,8 @@ TCPOK si todo fue correcto TCPERR_ARGS/ACCEPT/PTHREAD en caso de error con estas
 .PP
 
 .PP
-Definición en la línea 103 del archivo G\-2301\-01\-P1\-tcp\&.c\&.
-.SS "void tcpsocket_close (int socketd)"
+Definición en la línea 103 del archivo G-2301-01-P1-tcp\&.c\&.
+.SS "void tcpsocket_close (intsocketd)"
 
 .PP
 Cierra un socket TCP\&. 
@@ -149,8 +151,8 @@ Cierra un socket TCP\&.
 .PP
 
 .PP
-Definición en la línea 178 del archivo G\-2301\-01\-P1\-tcp\&.c\&.
-.SS "int tcpsocket_rcv (int socketd, void * data, size_t max, size_t * len)"
+Definición en la línea 178 del archivo G-2301-01-P1-tcp\&.c\&.
+.SS "int tcpsocket_rcv (intsocketd, void *data, size_tmax, size_t *len)"
 
 .PP
 Recibe a traves del socket TCP\&. 
@@ -173,8 +175,8 @@ TCPOK si todo fue correcto TCPERR_ARGS/RECV en caso de error con estas funciones
 .PP
 
 .PP
-Definición en la línea 157 del archivo G\-2301\-01\-P1\-tcp\&.c\&.
-.SS "int tcpsocket_snd (int socketd, void * data, size_t len)"
+Definición en la línea 157 del archivo G-2301-01-P1-tcp\&.c\&.
+.SS "int tcpsocket_snd (intsocketd, void *data, size_tlen)"
 
 .PP
 Envia los datos a traves del socket TCP\&. 
@@ -195,7 +197,7 @@ TCPOK si todo fue correcto TCPERR_ARGS/SEND en caso de error con estas funciones
 .PP
 
 .PP
-Definición en la línea 129 del archivo G\-2301\-01\-P1\-tcp\&.c\&.
+Definición en la línea 129 del archivo G-2301-01-P1-tcp\&.c\&.
 .SH "Autor"
 .PP 
 Generado automáticamente por Doxygen para Practica 2 - Redes de Comunicaciones II del código fuente\&.

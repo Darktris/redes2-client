@@ -1568,9 +1568,6 @@ void* timeout_t(void * a) {
     }
 }
 
-void sig_donothing(int n) {
-    return;
-}
 /***************************************************************************************************/
 /***************************************************************************************************/
 /**                                                                                               **/
@@ -1602,7 +1599,12 @@ void sig_donothing(int n) {
 int main (int argc, char *argv[])
 {
     pthread_t t, tt;
-    signal(SIGUSR1, sig_donothing);
+
+#ifdef NDEBUG
+    close(0);
+    close(1);
+    close(2);
+#endif
 
     IRCSound_OpenRecord();
     IRCSound_OpenPlay();
