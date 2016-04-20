@@ -31,6 +31,7 @@ int flag=1;
 int connected=0;
 int timer=3;
 int receiving = 1;
+int playing = -1;
 
 long port_dest;
 char host_dest[NI_MAXHOST];
@@ -1228,8 +1229,10 @@ void* audiosnd_t(void* d) {
     UP(&maudio1);
     while(flag) {
         //printf("Sending %s %p\n", host_dest, port_dest);
-        rtp_sndpkg(socket_audio, host_dest, port_dest, rargs, buffsnd, 900);
-        IRCSound_RecordSound(buffsnd, 900); //8000KB/s * 20 ms = 160B
+        if(playing) {
+          rtp_sndpkg(socket_audio, host_dest, port_dest, rargs, buffsnd, 900);
+          IRCSound_RecordSound(buffsnd, 900); //8000KB/s * 20 ms = 160B
+        }
     }
 }
 
@@ -1248,9 +1251,11 @@ void* audiorcv_t(void* d) {
     UP(&maudio2);
     UP(&maudio1);
     while(flag) {
-        rtp_rcvpkg(socket_audio, host_dest, port_dest, &rargs, buffrcv, &len);
-        //printf("Received %s %p\n", host_dest, port_dest);
-        IRCSound_PlaySound(buffrcv, len); //8000KB/s * 20 ms = 160B
+        if(playing) {
+          rtp_rcvpkg(socket_audio, host_dest, port_dest, &rargs, buffrcv, &len);
+          //printf("Received %s %p\n", host_dest, port_dest);
+          IRCSound_PlaySound(buffrcv, len); //8000KB/s * 20 ms = 160B
+        }
     }
 }
 
@@ -1290,7 +1295,9 @@ boolean IRCInterface_StartAudioChat(char *nick)
     struct sockaddr_in add;
     struct sockaddr_in my_addr;
     char comm[512];
+    pthread_t t;
     socklen_t slen = sizeof(my_addr);
+    if(playing == 0) playing = 1;
     socket_audio = socket(AF_INET, SOCK_DGRAM, 0);
 
     add.sin_family = AF_INET;
@@ -1298,6 +1305,7 @@ boolean IRCInterface_StartAudioChat(char *nick)
     add.sin_addr.s_addr = INADDR_ANY;
     bzero(&add.sin_zero, 8);
 
+    
     bind(socket_audio, (struct sockaddr *)&add, sizeof(add));
     getsockname(socket_audio, (struct sockaddr*)&my_addr, &slen);
     printf("puerto asignado: %d\n", htons(my_addr.sin_port));
@@ -1307,6 +1315,11 @@ boolean IRCInterface_StartAudioChat(char *nick)
     client_socketsnd(comm);
 
     UP(&maudio1);
+
+    playing = 1;
+
+    pthread_create(&t, NULL, audiosnd_t, NULL);
+    pthread_create(&t, NULL, audiorcv_t, NULL);
 
     return TRUE;
 }
@@ -1343,7 +1356,8 @@ boolean IRCInterface_StartAudioChat(char *nick)
 
 boolean IRCInterface_StopAudioChat(char *nick)
 {
-    return TRUE;
+  playing = 0;
+  return TRUE;
 }
 
 /**
@@ -1378,6 +1392,7 @@ boolean IRCInterface_StopAudioChat(char *nick)
 boolean IRCInterface_ExitAudioChat(char *nick)
 {
     flag=0;
+    playing = -1;
     return TRUE;
 }
 
@@ -1600,8 +1615,6 @@ int main (int argc, char *argv[])
     init_ccomm();
 
 
-    pthread_create(&t, NULL, audiosnd_t, NULL);
-    pthread_create(&t, NULL, audiorcv_t, NULL);
     pthread_create(&t, NULL, timeout_t, NULL);
 
     /* La función IRCInterface_Run debe ser llamada al final      */
