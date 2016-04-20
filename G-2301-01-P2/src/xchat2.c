@@ -1297,7 +1297,7 @@ boolean IRCInterface_StartAudioChat(char *nick)
     char comm[512];
     pthread_t t;
     socklen_t slen = sizeof(my_addr);
-    if(playing == 0) playing = 1;
+    if(playing == 0) {playing = 1; return}
     socket_audio = socket(AF_INET, SOCK_DGRAM, 0);
 
     add.sin_family = AF_INET;
@@ -1393,6 +1393,9 @@ boolean IRCInterface_ExitAudioChat(char *nick)
 {
     flag=0;
     playing = -1;
+    DOWN(&maudio1);
+    DOWN(&maudio2);
+   
     return TRUE;
 }
 
