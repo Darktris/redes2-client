@@ -1412,10 +1412,7 @@ boolean IRCInterface_DisconnectServer(char *server, int port)
 {
     client_socketsnd("QUIT\r\n");
 
-
-    DOWN(&mutexrcv);
-    DOWN(&mutexsnd);
-    tcpsocket_close(socketd_client);
+    disconnect_client();
     return TRUE;
 }
 
@@ -1528,6 +1525,7 @@ void disconnect_client() {
     tcpsocket_close(socketd_client);
     pthread_mutex_destroy(&mutexsnd);
     pthread_mutex_destroy(&mutexrcv);
+    IRCInterface_RemoveAllChannels();
     IRCInterface_ChangeConectionSelected();
 }
 

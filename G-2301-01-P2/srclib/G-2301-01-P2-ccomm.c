@@ -679,8 +679,8 @@ void cErrBadChannelKey(char* command) {
   @param command: El comando recibido
 */
 void cErrConnection(char* command) {
-    sleep(1);
-    //IRCInterface_ErrorDialog("Hubo algún error con la conexión. Por favor pruebe su conexión al servidor así como pruebe con otros nicks/user/realname si estos fallan");
+    //sleep(1);
+    IRCInterface_ErrorDialogThread("Hubo algún error con la conexión. Por favor pruebe su conexión al servidor así como pruebe con otros nicks/user/realname si estos fallan");
 }
 
 /**
@@ -865,6 +865,12 @@ void cRplChannelModeIs(char* command) {
 }
 
 /**
+  @brief Ignora el comando
+  @param command: El comando recibido
+*/
+void cDoNothing(char* command) {
+} 
+/**
   @brief Inicializa los comandos
 */
 void init_ccomm() {
@@ -907,10 +913,13 @@ void init_ccomm() {
     ccommands[ERR_NOSUCHNICK]=cErrNoSuchNick;
     ccommands[ERR_NOSUCHCHANNEL]=cErrNoSuchChannel;
     ccommands[ERR_BANNEDFROMCHAN]=cErrBannedFromChannel;
+    ccommands[PONG]=cDoNothing;
+    ccommands[RPL_TOPICWHOTIME]=cDoNothing;
+    ccommands[RPL_CREATIONTIME]=cDoNothing;
     
     /* Errores de conexion */ 
-    //ccommands[ERR_NICKNAMEINUSE]=cErrConnection;
-    //ccommands[ERR_NICKCOLLISION]=cErrConnection;
-    //ccommands[ERR_PASSWDMISMATCH]=cErrConnection;
+    ccommands[ERR_NICKNAMEINUSE]=cErrConnection;
+    ccommands[ERR_NICKCOLLISION]=cErrConnection;
+    ccommands[ERR_PASSWDMISMATCH]=cErrConnection;
 
 }
