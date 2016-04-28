@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -L$(LDIR) -I$(IDIR) -g `pkg-config --cflags gtk+-3.0` -DNDEBUG 
-LDFLAGS = -lpthread -lircredes -lircinterface -lsoundredes -lredes2-G-2301-01-P2 -lsoundredes -lpulse -lpulse-simple `pkg-config --libs gtk+-3.0` -rdynamic
+LDFLAGS = -lpthread -lircredes -lircinterface -lsoundredes -lredes2-G-2301-01-P2 -lsoundredes -lpulse -lpulse-simple `pkg-config --libs gtk+-3.0` -lssl -lcrypto -rdynamic 
 AR = ar 
 
 TAR_FILE= G-2301-01-P2.tar.gz
@@ -16,7 +16,7 @@ BDIR = .
 _LIB = libredes2-G-2301-01-P2.a
 LIB = $(patsubst %,$(LDIR)/%,$(_LIB))
 
-_LOBJ = G-2301-01-P1-daemon.o G-2301-01-P1-tcp.o G-2301-01-P1-udp.o G-2301-01-P2-rtp.o G-2301-01-P1-tools.o G-2301-01-P2-ucomm.o G-2301-01-P2-ccomm.o
+_LOBJ = G-2301-01-P1-daemon.o G-2301-01-P1-tcp.o G-2301-01-P1-udp.o G-2301-01-P2-rtp.o G-2301-01-P1-tools.o G-2301-01-P2-ucomm.o G-2301-01-P2-ccomm.o G-2301-01-P3-ssl.o
 LOBJ = $(patsubst %,$(ODIR)/%,$(_LOBJ))
 
 _DEPS = 

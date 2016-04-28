@@ -12,6 +12,7 @@
 #include <G-2301-01-P1-tools.h>
 #include <G-2301-01-P1-tcp.h>
 #include <G-2301-01-P2-rtp.h>
+#include <G-2301-01-P3-ssl.h>
 #include <syslog.h>
 
 #include<sys/socket.h>
@@ -43,7 +44,7 @@ char buffrcv[2000];
 char buffsnd[2000];
 char host[NI_MAXHOST];
 pthread_t t;
-
+boolean ssl;
 
 /**
   @brief Devuelve el nick del usuario. Requiere liberar memoria
@@ -139,7 +140,8 @@ char* get_uhost() {
 */
 int _client_socketsnd(char * msg) {
     DOWN(&mutexsnd);
-    tcpsocket_snd(socketd_client, msg, strlen(msg));
+    if(ssl) enviar_datos_SSL(socketd_client, msg, strlen(msg));
+    else tcpsocket_snd(socketd_client, msg, strlen(msg));
     UP(&mutexsnd);
     syslog(LOG_INFO, "Sending: %s", msg);
 }
@@ -153,7 +155,8 @@ int _client_socketsnd(char * msg) {
 int _client_socketrcv(char* msg, size_t size) {
     size_t len=0;
     DOWN(&mutexrcv);
-    tcpsocket_rcv(socketd_client, msg, size, &len);
+    if(ssl) recibir_datos_SSL(socketd_client, msg, size, (int*) &len);
+    else tcpsocket_rcv(socketd_client, msg, size, &len);
     UP(&mutexrcv);
     //syslog(LOG_INFO, "Receiving: %s", msg);
 }
@@ -1393,8 +1396,8 @@ boolean IRCInterface_ExitAudioChat(char *nick)
 {
     flag=0;
     playing = -1;
-    DOWN(&maudio1);
-    DOWN(&maudio2);
+    //DOWN(&maudio1);
+    //DOWN(&maudio2);
    
     return TRUE;
 }
@@ -1466,16 +1469,33 @@ boolean IRCInterface_DisconnectServer(char *server, int port)
  *<hr>
  */
 
-long IRCInterface_Connect(char *nick, char *user, char *realname, char *password, char *server, int port, boolean ssl)
+long IRCInterface_Connect(char *nick, char *user, char *realname, char *password, char *server, int port, boolean s)
 {
     char* comm;
     if(!nick || !user || !realname || !server || port < 0) return IRCERR_NOCONNECT;
-    if(ssl==TRUE) return IRCERR_NOSSL;
+    ssl = s; 
 
     if(client_tcpsocket_open(port, &socketd_client, server) < 0) {
         return IRCERR_NOCONNECT;
     }
 
+
+    if(ssl) {
+        /* Handshake SSL */
+        inicializar_nivel_SSL();
+        if(fijar_contexto_SSL(FILE_CLIENT_CERTIFICATE, FILE_CLIENT_CERTIFICATE)<0) {
+            printf("Error al inicializar el contexto\n");
+            ERR_print_errors_fp(stderr);
+            //return 0;
+        }
+        conectar_canal_seguro_SSL(socketd_client);
+        if(evaluar_post_connectar_SSL(socketd_client)) {
+            printf("Error del certificador\n");
+            ERR_print_errors_fp(stderr);
+        }
+
+        ERR_print_errors_fp(stderr);
+    }
     receiving = 1;
     pthread_mutex_init(&mutexsnd, NULL);
     pthread_mutex_init(&mutexrcv, NULL);
@@ -1605,7 +1625,7 @@ int main (int argc, char *argv[])
     close(1);
     close(2);
 #endif
-
+    
     IRCSound_OpenRecord();
     IRCSound_OpenPlay();
     pthread_mutex_init(&maudio1, NULL);
